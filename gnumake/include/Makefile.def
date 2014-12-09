@@ -1,0 +1,44 @@
+curdir = $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+OUT_DIR = $(shell pwd)/out
+OBJ_DIR = $(OUT_DIR)/objs
+BIN_DIR = $(OUT_DIR)/bin
+
+all_apps =
+cleans   =
+
+CC = gcc
+CFLAGS = -g -Wall
+
+define src_to_obj
+$1: $2
+	@mkdir -p $(dir $1)
+	$(CC) $(CFLAGS) -c $2 -o $1
+endef
+
+define make_app
+$(eval app := $(addprefix $(BIN_DIR)/, $(1)))
+$(eval tmp_dir := $(join $(OBJ_DIR)/, $(1)/))
+$(eval src_dir := $(call curdir))
+$(eval src_files := $(foreach file, $2, $(notdir $(file)))) # make sure we use the relative path
+$(eval objs := $(addprefix $(tmp_dir), $(patsubst %.c, %.o, $(src_files))))
+all_apps += $(1)
+$(foreach src_file,$(src_files),$(eval $(call src_to_obj, $(addprefix $(tmp_dir),\
+    $(patsubst %.c, %.o, $(src_file))), $(addprefix $(src_dir), $(src_file)))))
+
+.PHONY: $(1)
+$(1): $(app)
+
+$(app): $(objs)
+	@mkdir -p $(dir $(app))
+	$(CC) $(CFLAGS) -o $(app) $(objs)
+
+$(eval clean_obj := $(join clean_, $1))
+.PHONY: $(clean_obj)
+$(clean_obj) :
+	@rm -fr $(app) $(tmp_dir)
+	@echo "$(strip $(1)) cleaned"
+cleans += $(clean_obj)
+endef
+
+export make_app, curdir, all_apps, cleans
