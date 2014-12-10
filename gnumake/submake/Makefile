@@ -1,4 +1,5 @@
-subdirs = module1 module2
+# make the dependent directories first
+subdirs = shared module1 module2
 
 .PHONY : all
 all : $(subdirs)

@@ -1,3 +1,6 @@
 include ../Makefile.def
 
-$(eval $(call make_app,module1,$(wildcard *.c)))
+LDFLAGS += -L../shared -Wl,-rpath=../shared/
+LDLIBS += -lmodule
+
+$(eval $(call make-app,module1,$(wildcard *.c)))

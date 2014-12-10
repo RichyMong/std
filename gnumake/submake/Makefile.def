@@ -1,19 +1,29 @@
-CUR_DIR := $(shell pwd)
+# change . to $(shell pwd) if absolute path is necessary
+CUR_DIR := .
 OUT_DIR := $(CUR_DIR)
 BIN_DIR := $(OUT_DIR)
 OBJ_DIR := $(OUT_DIR)/objs
 
 CC = gcc
-CFLAGS = -g -Wall
+CFLAGS += -g -Wall -I../include
+
+ifeq ($(DEBUG), yes)
+CFLAGS += -DDEBUG
+else
+CFLAGS += -DNDEBUG
+endif
+
+# only one target is used. If need to support multiple targets,
+# we have to provide them to the clean target.
+target :=
 
 define src_to_obj
-.PHONY: $1
 $1: $2
 	@mkdir -p $(dir $1)
 	$(CC) $(CFLAGS) -c $2 -o $1
 endef
 
-define make_app
+define make-app
 $(eval src_files := $(foreach file,$2,$(notdir $(file)))) # make sure we use the relative path
 $(eval objs := $(addprefix $(OBJ_DIR)/,$(patsubst %.c,%.o,$(src_files))))
 
@@ -22,21 +32,32 @@ $(foreach src_file,$(src_files),$(eval $(call src_to_obj,$(addprefix $(OBJ_DIR)/
 
 $(eval app := $(addprefix $(BIN_DIR)/,$(1)))
 
-.DEFAULT_GOAL = $(1)
-.PHONY: $(1)
-$(1): $(app)
-
-# TODO: although the objects exist and the source files are not changed, make
-# keeps on remaking the targets in make_app. Maybe a bug of gnu-make?
+target := $(1)
+.DEFAULT_GOAL = $(app)
 $(app): $(strip $(objs))
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS) -o $(app) $(objs)
-
-.PHONY: clean
-clean:
-	-@rm -fr $(app) $(OBJ_DIR)
-	@echo "$(strip $(1)) cleanned"
+	$(CC) $(CFLAGS) -o $(app) $(objs) $(LDLIBS) $(LDFLAGS)
 
 endef
 
-export make_app
+define make-shared
+$(eval src_files := $(foreach file,$2,$(notdir $(file)))) # make sure we use the relative path
+$(eval objs := $(addprefix $(OBJ_DIR)/,$(patsubst %.c,%.o,$(src_files))))
+
+$(foreach src_file,$(src_files),$(eval $(call src_to_obj,$(addprefix $(OBJ_DIR)/,\
+    $(patsubst %.c,%.o,$(src_file))),$(addprefix $(CUR_DIR)/,$(src_file)))))
+
+$(eval libname := $(addprefix $(BIN_DIR)/,$(1)))
+target := $(1)
+
+.DEFAULT_GOAL = $(libname)
+$(libname): $(strip $(objs))
+	@mkdir -p $(BIN_DIR)
+	$(CC) $(CFLAGS) -shared -o $(libname) $(objs) $(LDLIBS)
+
+endef
+
+.PHONY: clean
+clean:
+	-@rm -fr $(target) $(OBJ_DIR)
+	@echo "$(strip $(target)) cleanned"
