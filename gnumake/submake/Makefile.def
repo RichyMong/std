@@ -13,10 +13,6 @@ else
 CFLAGS += -DNDEBUG
 endif
 
-# only one target is used. If need to support multiple targets,
-# we have to provide them to the clean target.
-target :=
-
 define src_to_obj
 $1: $2
 	@mkdir -p $(dir $1)
@@ -32,11 +28,15 @@ $(foreach src_file,$(src_files),$(eval $(call src_to_obj,$(addprefix $(OBJ_DIR)/
 
 $(eval app := $(addprefix $(BIN_DIR)/,$(1)))
 
-target := $(1)
 .DEFAULT_GOAL = $(app)
 $(app): $(strip $(objs))
 	@mkdir -p $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $(app) $(objs) $(LDLIBS) $(LDFLAGS)
+
+.PHONY: clean
+clean:
+	-@rm -fr $(1) $(OBJ_DIR)
+	@echo "$(strip $(1)) cleanned"
 
 endef
 
@@ -48,16 +48,15 @@ $(foreach src_file,$(src_files),$(eval $(call src_to_obj,$(addprefix $(OBJ_DIR)/
     $(patsubst %.c,%.o,$(src_file))),$(addprefix $(CUR_DIR)/,$(src_file)))))
 
 $(eval libname := $(addprefix $(BIN_DIR)/,$(1)))
-target := $(1)
 
 .DEFAULT_GOAL = $(libname)
 $(libname): $(strip $(objs))
 	@mkdir -p $(BIN_DIR)
 	$(CC) $(CFLAGS) -shared -o $(libname) $(objs) $(LDLIBS)
 
-endef
-
 .PHONY: clean
 clean:
-	-@rm -fr $(target) $(OBJ_DIR)
-	@echo "$(strip $(target)) cleanned"
+	-@rm -fr $(1) $(OBJ_DIR)
+	@echo "$(strip $(1)) cleanned"
+
+endef

@@ -3,7 +3,7 @@ PROGS=$(patsubst %.cpp, %, $(wildcard *.cpp))
 all:$(PROGS)
 
 %:%.cpp
-	g++ -std=c++11 -g -o $@ $< -pthread
+	g++ -std=c++14 -g -o $@ $< -pthread -ljsoncpp
 
 .PHONY:clean
 clean:
