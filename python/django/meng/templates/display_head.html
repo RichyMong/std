@@ -1,0 +1,26 @@
+<!DOCTYPE HTML>
+<html>
+    <h2>The information of the http header</h2>
+    <title>display http header</title>
+    <body>
+        <table border = "1" cellpadding = "10">
+            <tr>
+                <th colspan = "2">path</th>
+                <td>{{ request.path }}</td>
+            </tr>
+            <tr>
+                <th colspan = "2">host</th>
+                <td>{{ request.get_host }}</td>
+            </tr>
+            <tr>
+                <th rowspan = {{ request | length }}>Meta</th>
+            </tr>
+            {% for pair in request.META.items %}
+                <tr>
+                    <td>{{ pair.0 }}</td>
+                    <td>{{ pair.1 }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    </body>
+</html>
