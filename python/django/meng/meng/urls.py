@@ -2,6 +2,7 @@ from django.conf.urls import include, url
 from django.contrib import admin
 import hello
 import books.views
+import contact.views
 
 urlpatterns = [
     # Examples:
@@ -11,6 +12,7 @@ urlpatterns = [
     url(r'^admin/', include(admin.site.urls)),
     url(r'^time/$', hello.time),
     url(r'^header/$', hello.display_head),
-    url(r'^search-form/$', books.views.search_form),
     url(r'^search/$', books.views.search),
+    url(r'^contact/$', contact.views.contact),
+    url(r'^contact/thanks/$', contact.views.contact_thanks),
 ]
