@@ -8,6 +8,8 @@ def time(request):
     return render(request, 'current_time.html', { 'current_time' : now,
                                 'user_browser' : browser })
 
-
 def display_head(request):
     return render(request, 'display_head.html', { 'request' : request })
+
+def greeting(requst, message, name):
+    return HttpResponse('{}, {}'.format(message, name))
