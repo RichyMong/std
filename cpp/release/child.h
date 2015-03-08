@@ -2,17 +2,18 @@
 #define ROBOT_RELEASE_CHILD_H
 
 #include "login.h"
+#include <memory>
 
 namespace release {
 
 class Child {
 public:
-    Child(const std::string user) : lclient(user) {
+    Child(const std::string user) {
 
     }
 
 private:
-    Login lclient_;
+    std::shared_ptr<Login> lclient_;
 };
 
 }
