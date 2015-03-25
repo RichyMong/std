@@ -2,6 +2,8 @@
 #define MODEL_SERVER_WORKER_H
 
 #include "connection.h"
+#include "timer.h"
+#include "log.h"
 #include <string>
 #include <thread>
 #include <memory>
@@ -28,7 +30,18 @@ private:
 
 class Worker {
 public:
-    bool assign_connection(int fd);
+    explicit Worker(std::shared_ptr<util::Log> log)
+        : log_{ log }, timer_ { 2000 }, running {true} {
+        thread_ = std::thread { &Worker::main_loop, this };
+    }
+
+    ~Worker();
+
+    void stop();
+
+    void assign_connection(int fd);
+
+    void main_loop();
 
     size_t user_cnt() const {
         // we are not guarded by a lock here since it's not important even
@@ -37,7 +50,11 @@ public:
     }
 
 private:
-    std::unordered_map<std::string, std::unique_ptr<User>> users_;
+    std::unordered_map<int, std::unique_ptr<User>> users_;
+    std::shared_ptr<util::Log> log_;
+    util::Timer timer_;
+    std::thread thread_;
+    volatile bool running;
 };
 
 }

@@ -8,7 +8,10 @@ namespace util {
 
 class Connection {
 public:
-    explicit Connection(int fd);
+    explicit Connection(int fd)
+        : sockfd_(fd) {
+
+    }
 
     void close() {
         ::close(sockfd_);
