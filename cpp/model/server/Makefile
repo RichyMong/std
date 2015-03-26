@@ -1,13 +1,6 @@
-CXXFLAGS=-std=c++0x -g -O0 -Wall
+include ../Makefile.def
 
-SRC_FILES=$(wildcard *.cpp)
+# LDFLAGS += -L../shared -Wl,-rpath=../shared/
+LDLIBS += -lpthread
 
-APP=server
-all: $(APP)
-
-$(APP):$(SRC_FILES)
-	g++ $(CXXFLAGS) -o $@ $^ -lpthread -lcrypto
-
-clean:
-	@rm -vf $(APP)
-	@rm -vf *.o
+$(eval $(call make-app,server,$(wildcard *.cpp)))

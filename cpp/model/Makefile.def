@@ -1,0 +1,62 @@
+# change . to $(shell pwd) if absolute path is necessary
+CUR_DIR := .
+OUT_DIR := $(CUR_DIR)
+BIN_DIR := $(OUT_DIR)
+OBJ_DIR := $(OUT_DIR)/objs
+
+CXX = g++
+CXXFLAGS += -g -Wall -std=c++14
+
+ifeq ($(DEBUG), yes)
+CFLAGS += -DDEBUG
+else
+CFLAGS += -DNDEBUG
+endif
+
+define src_to_obj
+$1: $2
+	@mkdir -p $(dir $1)
+	$(CXX) $(CXXFLAGS) -c $2 -o $1
+endef
+
+define make-app
+$(eval src_files := $(foreach file,$2,$(notdir $(file)))) # make sure we use the relative path
+$(eval objs := $(addprefix $(OBJ_DIR)/,$(patsubst %.cpp,%.o,$(src_files))))
+
+$(foreach src_file,$(src_files),$(eval $(call src_to_obj,$(addprefix $(OBJ_DIR)/,\
+    $(patsubst %.cpp,%.o,$(src_file))),$(addprefix $(CUR_DIR)/,$(src_file)))))
+
+$(eval app := $(addprefix $(BIN_DIR)/,$(1)))
+
+.DEFAULT_GOAL = $(app)
+$(app): $(strip $(objs))
+	@mkdir -p $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) -o $(app) $(objs) $(LDLIBS) $(LDFLAGS)
+
+.PHONY: clean
+clean:
+	-@rm -fr $(1) $(OBJ_DIR)
+	@echo "$(strip $(1)) cleanned"
+
+endef
+
+define make-shared
+$(eval src_files := $(foreach file,$2,$(notdir $(file)))) # make sure we use the relative path
+$(eval objs := $(addprefix $(OBJ_DIR)/,$(patsubst %.cpp,%.o,$(src_files))))
+
+$(foreach src_file,$(src_files),$(eval $(call src_to_obj,$(addprefix $(OBJ_DIR)/,\
+    $(patsubst %.cpp,%.o,$(src_file))),$(addprefix $(CUR_DIR)/,$(src_file)))))
+
+$(eval libname := $(addprefix $(BIN_DIR)/,$(1)))
+
+.DEFAULT_GOAL = $(libname)
+$(libname): $(strip $(objs))
+	@mkdir -p $(BIN_DIR)
+	$(CC) $(CFLAGS) -shared -o $(libname) $(objs) $(LDLIBS)
+
+.PHONY: clean
+clean:
+	-@rm -fr $(1) $(OBJ_DIR)
+	@echo "$(strip $(1)) cleanned"
+
+endef
