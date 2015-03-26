@@ -57,6 +57,7 @@ void Log::output(const char* level, const char* fmt, va_list varg) {
         nwrite = sizeof(buf);
     }
 
+    // fwrite is MT-Safe so we do not use any lock here.
     fwrite(buf, nwrite, 1, file_);
 }
 
