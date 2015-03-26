@@ -7,8 +7,7 @@
 
 namespace util {
 
-class Time : public Singleston<Time> {
-    friend class Singleston<Time>;
+class Time {
 public:
     int64_t current_msec() const {
         return curr_msec_;
@@ -17,6 +16,11 @@ public:
     void update();
 
     const char* log_time() { return log_time_; }
+
+    static Time& instance() {
+        static thread_local Time the_time;
+        return the_time;
+    }
 
 private:
     Time() : curr_msec_ {0} {
