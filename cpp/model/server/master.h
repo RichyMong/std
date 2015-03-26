@@ -8,7 +8,8 @@
 
 namespace server {
 
-class Master {
+template <class MulPlex>
+class Master : public ConnManager {
 public:
     Master(std::shared_ptr<util::Log> log)
         : log_ { log } {
@@ -18,16 +19,21 @@ public:
 
     int start();
 
+    void add_connection(const ConnPtr& csp);
+
 private:
     bool start_workers();
 
     void stop_workers();
 
-    typedef std::shared_ptr<server::Worker> WorkerPtr;
+    typedef std::shared_ptr<Worker<MulPlex>> WorkerPtr;
 
     std::shared_ptr<util::Log> log_;
     std::vector<WorkerPtr>     workers_;
+    MulPlex                    multilex_;
 };
+
+extern template class Master<util::Epoll>;
 
 }
 

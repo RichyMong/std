@@ -1,6 +1,7 @@
 #ifndef MODEL_SERVER_EPOLL_H
 #define MODEL_SERVER_EPOLL_H
 
+#include <unistd.h>
 #include <sys/epoll.h>
 
 #define ARC_READ_EVENT  0x01
@@ -8,17 +9,17 @@
 
 namespace util {
 
-class EventHandler;
+class FileEvent;
 
 class Multiplex {
 public:
     virtual ~Multiplex() { }
 
-    virtual bool add(int fd, int event, EventHandler* handler) = 0;
+    virtual bool add(int event, FileEvent* handler) = 0;
 
-    virtual bool modify(int fd, int event, EventHandler* handler) = 0;
+    virtual bool modify(int event, FileEvent* handler) = 0;
 
-    virtual void remove(int fd) = 0;
+    virtual void remove(FileEvent* handler) = 0;
 
     virtual void handle_events(int timeout) = 0;
 };
@@ -29,11 +30,11 @@ public:
 
     ~Epoll();
 
-    virtual bool add(int fd, int event, EventHandler* handler);
+    virtual bool add(int event, FileEvent* handler);
 
-    virtual bool modify(int fd, int event, EventHandler* handler);
+    virtual bool modify(int event, FileEvent* handler);
 
-    virtual void remove(int fd);
+    virtual void remove(FileEvent* file);
 
     virtual void handle_events(int timeout = 0);
 
@@ -44,12 +45,15 @@ private:
     int epfd_;
 };
 
-class EventHandler {
+class FileEvent {
 public:
-    virtual ~EventHandler() { }
-    virtual void add_event(Multiplex& mutiplex) = 0;
+    virtual ~FileEvent() { }
+
+    virtual int getfd() const = 0;
+
     virtual void on_readable(Multiplex& mutiplex) = 0;
-    virtual void on_writeable(Multiplex& mutiplex) { (void) mutiplex; }
+
+    virtual void on_writeable(Multiplex&) { }
 };
 
 }

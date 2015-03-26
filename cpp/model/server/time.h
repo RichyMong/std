@@ -14,13 +14,9 @@ public:
         return curr_msec_;
     }
 
-    void update() {
-        timespec ts;
+    void update();
 
-        if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts) == 0) {
-            curr_msec_ = ts.tv_sec * 1000 + (ts.tv_nsec / 1000000);
-        }
-    }
+    const char* log_time() { return log_time_; }
 
 private:
     Time() : curr_msec_ {0} {
@@ -34,10 +30,13 @@ private:
     Time(const Time&);
 
     int64_t curr_msec_;
+    char    log_time_[128];
 };
 
 }
 
 #define current_msec Time::instance().current_msec()
+
+#define cached_log_time Time::instance().log_time()
 
 #endif // MODEL_SERVER_TIME_H

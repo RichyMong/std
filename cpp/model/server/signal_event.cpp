@@ -25,10 +25,6 @@ SignalEvent::SignalEvent() {
     }
 }
 
-SignalEvent::~SignalEvent() {
-    close(sigfd_);
-}
-
 void SignalEvent::on_readable(util::Multiplex& mutiplex) {
     (void) mutiplex;
 

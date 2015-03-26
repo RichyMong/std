@@ -20,10 +20,10 @@ Epoll::Epoll() {
 }
 
 Epoll::~Epoll() {
-    close(epfd_);
+    ::close(epfd_);
 }
 
-bool Epoll::add(int fd, int event, EventHandler *handler) {
+bool Epoll::add(int event, FileEvent *handler) {
     int real_event = 0;
 
     if (event & ARC_READ_EVENT) {
@@ -40,8 +40,8 @@ bool Epoll::add(int fd, int event, EventHandler *handler) {
     info.events  = real_event | EPOLLRDHUP;
     info.data.ptr = handler;
 
-    if (epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &info) < 0) {
-        printf("could not add fd[%d] to epoll\n", fd);
+    if (epoll_ctl(epfd_, EPOLL_CTL_ADD, handler->getfd(), &info) < 0) {
+        printf("could not add fd[%d] to epoll\n", handler->getfd());
         if (errno != EEXIST) {
             return false;
         }
@@ -50,7 +50,7 @@ bool Epoll::add(int fd, int event, EventHandler *handler) {
     return true;
 }
 
-bool Epoll::modify(int fd, int event, EventHandler* handler) {
+bool Epoll::modify(int event, FileEvent* handler) {
     int real_event = 0;
 
     if (event & ARC_READ_EVENT) {
@@ -67,17 +67,17 @@ bool Epoll::modify(int fd, int event, EventHandler* handler) {
     info.events  = event | EPOLLRDHUP;
     info.data.ptr = handler;
 
-    if (epoll_ctl(epfd_, EPOLL_CTL_MOD, fd, &info) < 0) {
-        printf("could not add fd[%d] to epoll\n", fd);
+    if (epoll_ctl(epfd_, EPOLL_CTL_MOD, handler->getfd(), &info) < 0) {
+        printf("could not add fd[%d] to epoll\n", handler->getfd());
         return false;
     }
 
     return true;
 }
 
-void Epoll::remove(int fd) {
-    if (epoll_ctl(epfd_, EPOLL_CTL_DEL, fd, NULL) < 0) {
-        printf("could not remove fd[%d] from epoll\n", fd);
+void Epoll::remove(FileEvent* file) {
+    if (epoll_ctl(epfd_, EPOLL_CTL_DEL, file->getfd(), NULL) < 0) {
+        printf("could not remove fd[%d] from epoll\n", file->getfd());
     }
 
     return;
@@ -97,7 +97,7 @@ void Epoll::handle_events(int timeout) {
     }
 
     for (int i = 0; i < count; ++i) {
-        EventHandler *handler = (EventHandler*)(events[i].data.ptr);
+        FileEvent *handler = (FileEvent*)(events[i].data.ptr);
         if (events[i].events & EPOLLIN) {
             handler->on_readable(*this);
         } else if (events[i].events & EPOLLOUT) {

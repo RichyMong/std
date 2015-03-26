@@ -29,19 +29,15 @@ protected:
     int64_t timepoint_msec_;
 };
 
-class Timer : public EventHandler {
+class Timer : public FileEvent {
 public:
     explicit Timer(int msec);
 
+    int getfd() const { return timefd_; }
+
     void on_readable(Multiplex& mutiplex);
 
-    void on_writeable(Multiplex& mutiplex) { }
-
     void reset(int msec);
-
-    void add_event(util::Multiplex& mutiplex) {
-        mutiplex.add(timefd_, ARC_READ_EVENT, this);
-    }
 
     void add_timer(TimerObj* sp) {
         timers_.insert(sp);
@@ -52,10 +48,9 @@ public:
     }
 
 private:
-    int timefd_;
-
     void expire_timer();
 
+    int  timefd_;
     int  interval_msec_;
 
     std::set<TimerObj*, bool(*)(const TimerObj*, const TimerObj*)> timers_;

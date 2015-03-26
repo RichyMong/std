@@ -6,22 +6,19 @@
 
 namespace server {
 
-class SignalEvent : public util::EventHandler {
+class SignalEvent : public util::FileEvent {
 public:
     SignalEvent();
 
-    ~SignalEvent();
+    int getfd() const { return sigfd_; }
 
     void on_readable(util::Multiplex& mutiplex);
-
-    void add_event(util::Multiplex& mutiplex) {
-        mutiplex.add(sigfd_, ARC_READ_EVENT, this);
-    }
 
 private:
     void handle_signal(int signo);
 
     int      sigfd_;
+
     sigset_t mask_;
 };
 

@@ -30,13 +30,13 @@ void Timer::reset(int msec) {
     tvs.it_value.tv_nsec = (msec % 1000) * 1000000;
 
     if (timerfd_settime(timefd_, 0, &tvs, NULL) < 0) {
-        std::perror("timerfd_settime");
+        std::perror("timertimefd_settime");
     }
 
     interval_msec_ = msec;
 }
 
-void Timer::on_readable(Multiplex& mutiplex) {
+void Timer::on_readable(Multiplex&) {
     uint64_t ticks;
     auto nread = read(timefd_, &ticks, sizeof(ticks));
     if (nread == sizeof(ticks)) {
@@ -49,7 +49,7 @@ void Timer::on_readable(Multiplex& mutiplex) {
 }
 
 void Timer::expire_timer() {
-    for (auto it = timers_.begin(); it != timers_.end(); it = timers_.erase(it)) {
+    for (auto it = timers_.begin(); it != timers_.end(); ++it) {
         if ((*it)->timepoint() > current_msec) {
             break;
         }
