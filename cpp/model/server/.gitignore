@@ -1,2 +1,4 @@
+objs
 server
 *.o
+*.log
