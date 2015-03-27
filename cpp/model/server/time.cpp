@@ -21,9 +21,9 @@ void Time::update() {
     tm result;
     localtime_r(&secs, &result);
 
-    snprintf(log_time_, sizeof(log_time_), "%04d-%02d-%02d %02d:%02d:%02d[%ld]",
-             result.tm_year + 1900, result.tm_mon + 1, result.tm_mday, result.tm_hour,
-             result.tm_min, result.tm_sec, ts.tv_nsec / 1000);
+    snprintf(log_time_, sizeof(log_time_), "%04d-%02d-%02d %02d:%02d:%02d[%06ld]",
+             result.tm_year + 1900, result.tm_mon + 1, result.tm_mday,
+             result.tm_hour, result.tm_min, result.tm_sec, ts.tv_nsec / 1000);
 }
 
 }

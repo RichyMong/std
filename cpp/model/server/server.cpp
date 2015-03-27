@@ -1,4 +1,5 @@
 #include "server.h"
+#include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string.h>
@@ -7,8 +8,11 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <sys/ioctl.h>
 
 namespace server {
+
+thread_local ConnManager* Server::manager_;
 
 int open_listening_socket(const std::string& ipaddr, short port) {
     std::ostringstream sport;
@@ -37,6 +41,10 @@ int open_listening_socket(const std::string& ipaddr, short port) {
         if (fd == -1)
            continue;
 
+        int reuse = 1;
+        if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+        }
+
         if (::bind(fd, rp->ai_addr, rp->ai_addrlen) == 0 &&
             ::listen(fd, 10) == 0) {
             break;
@@ -46,13 +54,16 @@ int open_listening_socket(const std::string& ipaddr, short port) {
         fd = -1;
     }
 
+    int nb = 1;
+    if (ioctl(fd, FIONBIO, &nb) < 0) {
+    }
+
     freeaddrinfo(result);
 
     return fd;
 }
 
-Server::Server(const std::string& ipaddr, short port)
-    : manager_ { NULL } {
+Server::Server(const std::string& ipaddr, short port) {
     listenfd_ = open_listening_socket(ipaddr, port);
     if (listenfd_ < 0) {
         throw std::runtime_error("cannot listen port");
@@ -63,7 +74,21 @@ Server::Server(short port)
     : Server("0.0.0.0", port) {
 }
 
-void Server::on_readable(util::Multiplex&) {
+bool Server::try_lock_accept() {
+    std::thread::id tid;
+    return tid_.compare_exchange_strong(tid, std::this_thread::get_id());
+}
+
+void Server::lock_accept() {
+}
+
+void Server::unlock_accept() {
+    std::thread::id tid = std::this_thread::get_id();
+    tid_.compare_exchange_strong(tid, std::thread::id{});
+}
+
+void Server::on_readable(util::Multiplex& multilex_) {
+    log_->debug("%lld on_readable", pthread_self());
     for ( ; ; ) {
         auto fd = accept(listenfd_, NULL, NULL);
         if (fd >= 0 && manager_) {
@@ -73,6 +98,7 @@ void Server::on_readable(util::Multiplex&) {
         if (errno != EINTR)
             break;
     }
+    multilex_.modify(ARC_READ_EVENT | ARC_ONE_SHOT, this);
 }
 
 }

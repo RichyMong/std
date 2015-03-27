@@ -1,11 +1,12 @@
 #ifndef MODEL_SERVER_EPOLL_H
 #define MODEL_SERVER_EPOLL_H
 
+#include <functional>
 #include <unistd.h>
-#include <sys/epoll.h>
 
 #define ARC_READ_EVENT  0x01
 #define ARC_WRITE_EVENT 0x02
+#define ARC_ONE_SHOT    0x04
 
 namespace util {
 
@@ -21,7 +22,7 @@ public:
 
     virtual void remove(FileEvent* handler) = 0;
 
-    virtual void handle_events(int timeout) = 0;
+    virtual int handle_events(int timeout) = 0;
 };
 
 class Epoll : public Multiplex {
@@ -36,7 +37,9 @@ public:
 
     virtual void remove(FileEvent* file);
 
-    virtual void handle_events(int timeout = 0);
+    virtual int handle_events(int timeout = 0);
+
+    static int convert_event(int event);
 
 private:
     static int kMaxEpollEvent;

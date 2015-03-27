@@ -45,11 +45,12 @@ void Log::output(const char* level, const char* fmt, va_list varg) {
     auto nwrite = snprintf(buf, sizeof(buf), "%s <%s> ", cached_log_time, level);
 
     nwrite += vsnprintf(buf + nwrite, sizeof(buf) - nwrite, fmt, varg);
+    nwrite += snprintf(buf + nwrite, sizeof(buf) - nwrite, "\n");
     if (nwrite >= (int) sizeof(buf)) {
-        auto end = buf + sizeof(buf) - 2;
+        auto end = buf + sizeof(buf) - 3;
         auto pos = strrchr(buf, ' ');
         if (pos == NULL) {
-            pos = end - 4;
+            pos = end - 5;
         }
         while (pos != end) {
             *pos++ = '.';

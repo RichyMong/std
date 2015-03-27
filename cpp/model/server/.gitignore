@@ -1,4 +1,4 @@
-objs
-server
-*.o
-*.log
+*
+!*.cpp
+!*.h
+!Makefile

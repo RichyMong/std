@@ -7,6 +7,7 @@
 #include "connection.h"
 #include <string>
 #include <map>
+#include <atomic>
 
 namespace server {
 
@@ -21,6 +22,12 @@ public:
 
     explicit Server(short port);
 
+    bool try_lock_accept();
+
+    void lock_accept();
+
+    void unlock_accept();
+
     void set_logger(util::LogPtr log) { log_ = log; }
 
     int getfd() const { return listenfd_; }
@@ -30,9 +37,10 @@ public:
     void set_manager(ConnManager* manager) { manager_ = manager; }
 
 private:
-    ConnManager* manager_;
+    static thread_local ConnManager* manager_;
     util::LogPtr log_;
     int          listenfd_;
+    std::atomic<std::thread::id> tid_;
 };
 
 class ServerManager : public util::Singleston<ServerManager> {

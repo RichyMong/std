@@ -36,7 +36,6 @@ public:
         if (nread > 0) {
             log_->debug("%s", buf);
         } else {
-            log_->debug("closed\n", buf);
             close();
         }
     }

@@ -10,7 +10,9 @@
 
 namespace util {
 
-int Epoll::kMaxEpollEvent = 20;
+int Epoll::kMaxEpollEvent = 128;
+
+static int kDefaultEpollEvent = EPOLLRDHUP | EPOLLET;
 
 Epoll::Epoll() {
     epfd_ = epoll_create(20);
@@ -24,20 +26,10 @@ Epoll::~Epoll() {
 }
 
 bool Epoll::add(int event, FileEvent *handler) {
-    int real_event = 0;
-
-    if (event & ARC_READ_EVENT) {
-        real_event = EPOLLIN;
-    }
-
-    if (event & ARC_WRITE_EVENT) {
-        real_event |= EPOLLOUT;
-    }
-
     epoll_event info;
 
     memset(&info, 0, sizeof(info));
-    info.events  = real_event | EPOLLRDHUP;
+    info.events  = convert_event(event) | kDefaultEpollEvent;
     info.data.ptr = handler;
 
     if (epoll_ctl(epfd_, EPOLL_CTL_ADD, handler->getfd(), &info) < 0) {
@@ -51,20 +43,10 @@ bool Epoll::add(int event, FileEvent *handler) {
 }
 
 bool Epoll::modify(int event, FileEvent* handler) {
-    int real_event = 0;
-
-    if (event & ARC_READ_EVENT) {
-        real_event = EPOLLIN;
-    }
-
-    if (event & ARC_WRITE_EVENT) {
-        real_event |= EPOLLOUT;
-    }
-
     epoll_event info;
 
     memset(&info, 0, sizeof(info));
-    info.events  = event | EPOLLRDHUP;
+    info.events  = convert_event(event) | kDefaultEpollEvent;
     info.data.ptr = handler;
 
     if (epoll_ctl(epfd_, EPOLL_CTL_MOD, handler->getfd(), &info) < 0) {
@@ -83,7 +65,7 @@ void Epoll::remove(FileEvent* file) {
     return;
 }
 
-void Epoll::handle_events(int timeout) {
+int Epoll::handle_events(int timeout) {
     epoll_event events[kMaxEpollEvent];
 
     int count = epoll_wait(epfd_, events, kMaxEpollEvent, timeout);
@@ -93,7 +75,7 @@ void Epoll::handle_events(int timeout) {
         if (errno != EINTR) {
             printf("epoll wait error");
         }
-        return;
+        return 0;
     }
 
     for (int i = 0; i < count; ++i) {
@@ -104,6 +86,26 @@ void Epoll::handle_events(int timeout) {
             handler->on_writeable(*this);
         }
     }
+
+    return count > 0 ? count : 0;
+}
+
+int Epoll::convert_event(int event) {
+    int real_event = 0;
+
+    if (event & ARC_READ_EVENT) {
+        real_event = EPOLLIN;
+    }
+
+    if (event & ARC_WRITE_EVENT) {
+        real_event |= EPOLLOUT;
+    }
+
+    if (event & ARC_ONE_SHOT) {
+        real_event |= EPOLLONESHOT;
+    }
+
+    return real_event;
 }
 
 }

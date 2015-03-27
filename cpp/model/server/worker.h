@@ -31,12 +31,9 @@ private:
 
 
 template <class T>
-class Worker {
+class Worker : public ConnManager {
 public:
-    explicit Worker(std::shared_ptr<util::Log> log)
-        : log_{ log }, timer_ { 2000 }, running {true} {
-        thread_ = std::thread { &Worker::main_loop, this };
-    }
+    explicit Worker(std::shared_ptr<util::Log> log);
 
     ~Worker();
 
@@ -44,20 +41,11 @@ public:
 
     void main_loop();
 
-    bool try_assign(const ConnPtr& csp) {
-        std::unique_lock<std::mutex> lck { users_mutex_, std::defer_lock };
-        if (lck.try_lock()) {
-            users_.insert(std::make_pair(++id_, csp));
-            multilex_.add(ARC_READ_EVENT, csp.get());
-            log_->debug("add fd[%d]\n", csp.get()->getfd());
-            return true;
-        }
-        return false;
-    }
+    bool try_assign(const ConnPtr& csp);
 
     void assign(const ConnPtr& csp);
 
-    void check_servers();
+    void add_connection(const ConnPtr& csp);
 
     size_t user_cnt() const {
         // we are not guarded by a lock here since it's not important even
@@ -67,13 +55,13 @@ public:
 
 private:
     std::unordered_map<int, ConnPtr> users_;
-    std::mutex users_mutex_;
+    std::mutex    users_mutex_;
     util::LogPtr  log_;
     util::Timer   timer_;
     std::thread   thread_;
     volatile bool running;
     T             multilex_;
-    int           id_;
+    int           id_ = 0;
 };
 
 extern template class Worker<util::Epoll>;
