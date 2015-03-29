@@ -41,9 +41,6 @@ void Worker<T>::main_loop() {
     timer_.add_timer(new WorkTimer(1000, log_));
     multilex_.add(ARC_READ_EVENT, &timer_);
     while (running) {
-        if (users_.size() < 80) {
-        }
-
         multilex_.handle_events(50);
     }
 }
@@ -52,8 +49,7 @@ template <class T>
 bool Worker<T>::try_assign(const ConnPtr& csp) {
     std::unique_lock<std::mutex> lck { users_mutex_, std::defer_lock };
     if (lck.try_lock()) {
-        users_.insert(std::make_pair(++id_, csp));
-        multilex_.add(ARC_READ_EVENT, csp.get());
+        add_connection(csp);
         return true;
     }
     return false;
@@ -62,8 +58,7 @@ bool Worker<T>::try_assign(const ConnPtr& csp) {
 template <class T>
 void Worker<T>::assign(const ConnPtr& csp) {
     std::lock_guard<std::mutex> lck(users_mutex_);
-    users_.insert(std::make_pair(++id_, csp));
-    multilex_.add(ARC_READ_EVENT, csp.get());
+    add_connection(csp);
 }
 
 template <class T>
@@ -73,6 +68,7 @@ void Worker<T>::stop() {
 
 template <class T>
 void Worker<T>::add_connection(const ConnPtr& csp) {
+    csp->set_handler(this);
     multilex_.add(ARC_READ_EVENT, csp.get());
     users_.insert(std::make_pair(++id_, csp));
 }

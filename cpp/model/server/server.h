@@ -16,7 +16,7 @@ public:
     virtual void add_connection(const ConnPtr& csp) = 0;
 };
 
-class Server : public util::FileEvent {
+class Server : public util::FileObj {
 public:
     Server(const std::string& addr, short port);
 

@@ -31,7 +31,7 @@ private:
 
 
 template <class T>
-class Worker : public ConnManager {
+class Worker : public util::EventHandler {
 public:
     explicit Worker(std::shared_ptr<util::Log> log);
 
@@ -45,15 +45,17 @@ public:
 
     void assign(const ConnPtr& csp);
 
-    void add_connection(const ConnPtr& csp);
-
     size_t user_cnt() const {
         // we are not guarded by a lock here since it's not important even
         // if we get an imprecise value.
         return users_.size();
     }
 
+    void on_readable(util::Multiplex& mutiplex) override;
+
 private:
+    void add_connection(const ConnPtr& csp);
+
     std::unordered_map<int, ConnPtr> users_;
     std::mutex    users_mutex_;
     util::LogPtr  log_;

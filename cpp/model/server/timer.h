@@ -29,7 +29,7 @@ protected:
     int64_t timepoint_msec_;
 };
 
-class Timer : public FileEvent {
+class Timer : public FileObj {
 public:
     explicit Timer(int msec);
 

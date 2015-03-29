@@ -6,7 +6,7 @@
 
 namespace server {
 
-class SignalEvent : public util::FileEvent {
+class SignalEvent : public util::FileObj {
 public:
     SignalEvent();
 

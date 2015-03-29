@@ -11,7 +11,7 @@
 
 namespace util {
 
-class Connection : public util::FileEvent {
+class Connection : public util::FileObj {
 public:
     Connection(int fd, util::LogPtr log)
         : sockfd_ { fd }, log_ { log } {

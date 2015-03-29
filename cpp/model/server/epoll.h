@@ -1,26 +1,23 @@
 #ifndef MODEL_SERVER_EPOLL_H
 #define MODEL_SERVER_EPOLL_H
 
-#include <functional>
-#include <unistd.h>
-
 #define ARC_READ_EVENT  0x01
 #define ARC_WRITE_EVENT 0x02
 #define ARC_ONE_SHOT    0x04
 
 namespace util {
 
-class FileEvent;
+class FileObj;
 
 class Multiplex {
 public:
     virtual ~Multiplex() { }
 
-    virtual bool add(int event, FileEvent* handler) = 0;
+    virtual bool add(int event, FileObj* handler) = 0;
 
-    virtual bool modify(int event, FileEvent* handler) = 0;
+    virtual bool modify(int event, FileObj* handler) = 0;
 
-    virtual void remove(FileEvent* handler) = 0;
+    virtual void remove(FileObj* handler) = 0;
 
     virtual int handle_events(int timeout) = 0;
 };
@@ -31,11 +28,11 @@ public:
 
     ~Epoll();
 
-    virtual bool add(int event, FileEvent* handler);
+    virtual bool add(int event, FileObj* handler);
 
-    virtual bool modify(int event, FileEvent* handler);
+    virtual bool modify(int event, FileObj* handler);
 
-    virtual void remove(FileEvent* file);
+    virtual void remove(FileObj* file);
 
     virtual int handle_events(int timeout = 0);
 
@@ -48,15 +45,29 @@ private:
     int epfd_;
 };
 
-class FileEvent {
+class EventHandler {
 public:
-    virtual ~FileEvent() { }
-
-    virtual int getfd() const = 0;
+    virtual ~EventHandler() { }
 
     virtual void on_readable(Multiplex& mutiplex) = 0;
 
     virtual void on_writeable(Multiplex&) { }
+};
+
+class FileObj : public EventHandler {
+public:
+    FileObj() : handler_ { this } { }
+
+    virtual ~FileObj() { }
+
+    virtual int getfd() const = 0;
+
+    EventHandler* handler() const { return handler_; }
+
+    void set_handler(EventHandler* handler) { handler_ = handler; }
+
+protected:
+    EventHandler *handler_;
 };
 
 }

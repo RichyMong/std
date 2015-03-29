@@ -49,12 +49,11 @@ void Timer::on_readable(Multiplex&) {
 }
 
 void Timer::expire_timer() {
-    for (auto it = timers_.begin(); it != timers_.end(); ++it) {
+    for (auto it = timers_.begin(); it != timers_.end(); it = timers_.erase(it)) {
         if ((*it)->timepoint() > current_msec) {
             break;
         }
         (*it)->timeout();
-        (*it)->update();
     }
 }
 

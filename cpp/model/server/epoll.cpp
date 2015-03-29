@@ -25,7 +25,7 @@ Epoll::~Epoll() {
     ::close(epfd_);
 }
 
-bool Epoll::add(int event, FileEvent *handler) {
+bool Epoll::add(int event, FileObj *handler) {
     epoll_event info;
 
     memset(&info, 0, sizeof(info));
@@ -42,7 +42,7 @@ bool Epoll::add(int event, FileEvent *handler) {
     return true;
 }
 
-bool Epoll::modify(int event, FileEvent* handler) {
+bool Epoll::modify(int event, FileObj* handler) {
     epoll_event info;
 
     memset(&info, 0, sizeof(info));
@@ -57,7 +57,7 @@ bool Epoll::modify(int event, FileEvent* handler) {
     return true;
 }
 
-void Epoll::remove(FileEvent* file) {
+void Epoll::remove(FileObj* file) {
     if (epoll_ctl(epfd_, EPOLL_CTL_DEL, file->getfd(), NULL) < 0) {
         printf("could not remove fd[%d] from epoll\n", file->getfd());
     }
@@ -79,7 +79,7 @@ int Epoll::handle_events(int timeout) {
     }
 
     for (int i = 0; i < count; ++i) {
-        FileEvent *handler = (FileEvent*)(events[i].data.ptr);
+        FileObj *handler = (FileEvent*)(events[i].data.ptr);
         if (events[i].events & EPOLLIN) {
             handler->on_readable(*this);
         } else if (events[i].events & EPOLLOUT) {
