@@ -8,12 +8,12 @@
 
 namespace util {
 
-bool timer_cmp(const TimerObj* a, const TimerObj* b) {
+bool timer_cmp(const TimerObjPtr a, const TimerObjPtr b) {
     return a->timepoint() < b->timepoint();
 }
 
 Timer::Timer(int msec)
-    :timers_ { timer_cmp } {
+    : timers_ { timer_cmp } {
     timefd_ = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
     if (timefd_ < 0) {
         throw std::runtime_error("cannot create timer");
@@ -36,7 +36,7 @@ void Timer::reset(int msec) {
     interval_msec_ = msec;
 }
 
-void Timer::on_readable(Multiplex&) {
+void Timer::on_readable(Multiplex&, FileObj*) {
     uint64_t ticks;
     auto nread = read(timefd_, &ticks, sizeof(ticks));
     if (nread == sizeof(ticks)) {
@@ -49,6 +49,8 @@ void Timer::on_readable(Multiplex&) {
 }
 
 void Timer::expire_timer() {
+    printf("timepoint %ld\n", timers_.size());
+
     for (auto it = timers_.begin(); it != timers_.end(); it = timers_.erase(it)) {
         if ((*it)->timepoint() > current_msec) {
             break;

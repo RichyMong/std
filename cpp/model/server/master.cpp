@@ -1,6 +1,7 @@
 #include "master.h"
 #include "util.h"
 #include "timer.h"
+#include <stdexcept>
 #include <iostream>
 #include <algorithm>
 #include <sys/timerfd.h>
@@ -22,8 +23,7 @@ bool Master<T>::start_workers() {
 
     std::cout << cpu_cnt << std::endl;
     if (cpu_cnt <= 0) {
-        log_->error("cannot decide the number of threads to run");
-        return false;
+        throw std::runtime_error("cannot decide the number of threads to run");
     }
 
     for (auto i = 0; i != cpu_cnt; ++i) {
@@ -45,16 +45,23 @@ void Master<T>::stop_workers() {
 
 template <class T>
 void Master<T>::add_connection(const ConnPtr& csp) {
-    workers_[0]->assign(csp);
+    workers_[0]->add_connection(csp);
+    return;
+    for (auto it = workers_.begin(); it != workers_.end(); ++it) {
+        // if ((*it)->try_assign(csp)) {
+        //     return;
+        // }
+    }
+
+    // hope we won't be blocked for a long time
+    // workers_[0]->assign(csp);
 }
 
 template <class T>
 int Master<T>::start() {
     server_manager.add_server(12345);
 
-    if (!start_workers()) {
-        return 1;
-    }
+    start_workers();
 
     auto servers = server_manager.servers();
     for (auto it = servers.cbegin(); it != servers.cend(); ++it) {
@@ -68,9 +75,11 @@ int Master<T>::start() {
     for ( ; ; ) {
         int count = multilex_.handle_events(5000);
 
-        std::sort(workers_.begin(), workers_.end(), worker_cmp<T>);
-        if (count)
+        if (count) {
+            std::sort(workers_.begin(), workers_.end(), worker_cmp<T>);
             continue;
+        }
+
         for (auto it = workers_.cbegin(); it != workers_.cend(); ++it) {
             log_->info("cnt: %d", (*it)->user_cnt());
         }

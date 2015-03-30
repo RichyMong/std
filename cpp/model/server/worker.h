@@ -19,14 +19,21 @@ public:
     std::string email_;
 };
 
-class User : public util::Connection {
+class User : public util::TimerObj {
 public:
-    User(int fd, util::LogPtr log)
-        : util::Connection(fd, log) {
+    User(std::shared_ptr<util::Connection>& sp, util::LogPtr log)
+        : TimerObj { 5000 }, log_ { log }, connection_ { sp } {
+    }
+
+    void timeout() {
+        log_->warning("connection %d timeouted", connection_->getfd());
+        connection_->close();
     }
 
 private:
-    UserInfo userinfo_;
+    UserInfo                          userinfo_;
+    util::LogPtr                      log_;
+    std::shared_ptr<util::Connection> connection_;
 };
 
 
@@ -51,16 +58,17 @@ public:
         return users_.size();
     }
 
-    void on_readable(util::Multiplex& mutiplex) override;
+    void on_readable(util::Multiplex&, util::FileObj*) override;
 
-private:
+    void on_writeable(util::Multiplex&, util::FileObj*) override;
+
     void add_connection(const ConnPtr& csp);
 
-    std::unordered_map<int, ConnPtr> users_;
+private:
+    std::unordered_map<int, std::shared_ptr<User>> users_;
     std::mutex    users_mutex_;
-    util::LogPtr  log_;
-    util::Timer   timer_;
     std::thread   thread_;
+    util::LogPtr  log_;
     volatile bool running;
     T             multilex_;
     int           id_ = 0;
@@ -70,4 +78,4 @@ extern template class Worker<util::Epoll>;
 
 }
 
-#endif // MODEL_SERVER_WORKER_H
+#endif // breakMODEL_SERVER_WORKER_H

@@ -87,12 +87,12 @@ void Server::unlock_accept() {
     tid_.compare_exchange_strong(tid, std::thread::id{});
 }
 
-void Server::on_readable(util::Multiplex& multilex_) {
+void Server::on_readable(util::Multiplex& multilex_, util::FileObj*) {
     log_->debug("%lld on_readable", pthread_self());
     for ( ; ; ) {
         auto fd = accept(listenfd_, NULL, NULL);
         if (fd >= 0 && manager_) {
-            manager_->add_connection(std::make_shared<util::Connection>(fd, log_));
+            manager_->add_connection(new util::Connection(fd, log_));
         }
 
         if (errno != EINTR)

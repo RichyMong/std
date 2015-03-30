@@ -9,41 +9,28 @@
 
 namespace util {
 
-class TimerObj {
-public:
-    virtual void timeout() = 0;
-
-    int64_t timepoint() const {
-        return timepoint_msec_;
-    }
-
-    void update() {
-        timepoint_msec_ += 2000;
-    }
-
-protected:
-    explicit TimerObj(int msec)
-        : timepoint_msec_ {msec + current_msec} {
-    }
-
-    int64_t timepoint_msec_;
-};
-
 class Timer : public FileObj {
 public:
     explicit Timer(int msec);
 
     int getfd() const { return timefd_; }
 
-    void on_readable(Multiplex& mutiplex);
+    void on_readable(Multiplex&, FileObj*);
 
     void reset(int msec);
 
-    void add_timer(TimerObj* sp) {
+    int next_timer() {
+        auto it = timers_.cbegin();
+        return (it != timers_.cend())
+                ? (*it)->timepoint() - current_msec
+                : -1;
+    }
+
+    void add_timer(TimerObjPtr sp) {
         timers_.insert(sp);
     }
 
-    void del_timer(TimerObj* sp) {
+    void del_timer(TimerObjPtr sp) {
         timers_.erase(sp);
     }
 
@@ -53,7 +40,7 @@ private:
     int  timefd_;
     int  interval_msec_;
 
-    std::set<TimerObj*, bool(*)(const TimerObj*, const TimerObj*)> timers_;
+    std::multiset<TimerObjPtr, bool(*)(const TimerObjPtr, const TimerObjPtr)> timers_;
 };
 
 }

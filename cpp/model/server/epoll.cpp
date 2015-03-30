@@ -50,7 +50,8 @@ bool Epoll::modify(int event, FileObj* handler) {
     info.data.ptr = handler;
 
     if (epoll_ctl(epfd_, EPOLL_CTL_MOD, handler->getfd(), &info) < 0) {
-        printf("could not add fd[%d] to epoll\n", handler->getfd());
+        printf("could not add fd[%d] to epoll: %s\n",
+                handler->getfd(), strerror(errno));
         return false;
     }
 
@@ -79,11 +80,12 @@ int Epoll::handle_events(int timeout) {
     }
 
     for (int i = 0; i < count; ++i) {
-        FileObj *handler = (FileEvent*)(events[i].data.ptr);
+        FileObj *handler = (FileObj*)(events[i].data.ptr);
+        if (events[i].events & EPOLLOUT) {
+            handler->handler()->on_writeable(*this, handler);
+        }
         if (events[i].events & EPOLLIN) {
-            handler->on_readable(*this);
-        } else if (events[i].events & EPOLLOUT) {
-            handler->on_writeable(*this);
+            handler->handler()->on_readable(*this, handler);
         }
     }
 

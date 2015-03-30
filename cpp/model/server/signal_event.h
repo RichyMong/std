@@ -10,16 +10,18 @@ class SignalEvent : public util::FileObj {
 public:
     SignalEvent();
 
+    explicit SignalEvent(const sigset_t& mask);
+
+    ~SignalEvent();
+
     int getfd() const { return sigfd_; }
 
-    void on_readable(util::Multiplex& mutiplex);
+    void on_readable(util::Multiplex& mutiplex, util::FileObj* handler);
 
 private:
     void handle_signal(int signo);
 
     int      sigfd_;
-
-    sigset_t mask_;
 };
 
 }

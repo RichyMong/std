@@ -30,7 +30,7 @@ public:
 
     bool is_closed() const { return sockfd_ == -1; }
 
-    void on_readable(util::Multiplex&) {
+    void on_readable(util::Multiplex&, util::FileObj*) {
         char buf[4096];
         auto nread = read(sockfd_, buf, sizeof(buf));
         if (nread > 0) {
@@ -50,6 +50,7 @@ private:
 
 }
 
-typedef std::shared_ptr<util::Connection> ConnPtr;
+// typedef std::shared_ptr<util::Connection> ConnPtr;
+typedef util::Connection* ConnPtr;
 
 #endif // MODEL_SERVER_CONNECTION_H

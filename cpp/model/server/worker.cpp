@@ -1,5 +1,6 @@
 #include "worker.h"
 #include "server.h"
+#include "connection.h"
 #include <stdexcept>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -7,9 +8,18 @@
 
 namespace server {
 
+class FileDecorator {
+public:
+    explicit FileDecorator(util::FileObj* fobj)
+        : fobj_ { fobj } {
+    }
+private:
+    util::FileObj* fobj_;
+};
+
 template <class T>
 Worker<T>::Worker(std::shared_ptr<util::Log> log)
-    : log_{ log }, timer_ { 1000 }, running {true} {
+    : log_{ log }, running {true} {
     thread_ = std::thread { &Worker::main_loop, this };
     if (thread_.get_id() == std::thread::id{}) {
         throw std::runtime_error("cannot start worker thread!");
@@ -23,25 +33,12 @@ Worker<T>::~Worker() {
     thread_.join();
 }
 
-class WorkTimer : public util::TimerObj {
-public:
-    virtual void timeout() {
-    }
-
-    WorkTimer(int msec, std::shared_ptr<util::Log> log)
-        : util::TimerObj(msec), log_(log) {
-    }
-
-private:
-    std::shared_ptr<util::Log> log_;
-};
-
 template <class T>
 void Worker<T>::main_loop() {
-    timer_.add_timer(new WorkTimer(1000, log_));
-    multilex_.add(ARC_READ_EVENT, &timer_);
+    multilex_.add(ARC_READ_EVENT, &the_time);
+
     while (running) {
-        multilex_.handle_events(50);
+        multilex_.handle_events(-1);
     }
 }
 
@@ -69,8 +66,29 @@ void Worker<T>::stop() {
 template <class T>
 void Worker<T>::add_connection(const ConnPtr& csp) {
     csp->set_handler(this);
-    multilex_.add(ARC_READ_EVENT, csp.get());
-    users_.insert(std::make_pair(++id_, csp));
+
+    // Tricky here. We use this method to make us lock free since it's safe
+    // to take action on the same epoll fd in muti-thread environment.
+    multilex_.add(ARC_WRITE_EVENT | ARC_ONE_SHOT, csp);
+}
+
+template <class T>
+void Worker<T>::on_readable(util::Multiplex& mplex, util::FileObj* fobj) {
+    fobj->on_readable(mplex, fobj);
+    if (fobj->is_closed()) {
+        std::lock_guard<std::mutex> lck(users_mutex_);
+    }
+}
+
+template <class T>
+void Worker<T>::on_writeable(util::Multiplex&, util::FileObj* fobj) {
+    std::shared_ptr<util::Connection> csp(dynamic_cast<util::Connection*>(fobj));
+    assert(csp);
+    auto usp = std::make_shared<User>(csp, log_);
+    users_.insert(std::make_pair(++id_, usp));
+    multilex_.modify(ARC_READ_EVENT | ARC_ONE_SHOT, csp.get());
+    log_->debug("%lld on_writeable", pthread_self());
+    the_time.add_timer(usp);
 }
 
 template class Worker<util::Epoll>;

@@ -5,29 +5,47 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/signalfd.h>
+#include <assert.h>
 
 namespace server {
 
 SignalEvent::SignalEvent() {
-    sigemptyset(&mask_);
-    sigaddset(&mask_, SIGINT);
-    sigaddset(&mask_, SIGHUP);
-    sigaddset(&mask_, SIGPIPE);
+    sigset_t mask;
 
-    auto ret = pthread_sigmask(SIG_BLOCK, &mask_, NULL);
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+    sigaddset(&mask, SIGHUP);
+    sigaddset(&mask, SIGPIPE);
+
+    auto ret = pthread_sigmask(SIG_BLOCK, &mask, NULL);
     if (ret) {
         throw std::runtime_error("cannot block signals");
     }
 
-    sigfd_ = signalfd(-1, &mask_, SFD_NONBLOCK);
+    sigfd_ = signalfd(-1, &mask, SFD_NONBLOCK);
     if (sigfd_ < 0) {
         throw std::runtime_error("cannot create signal fd");
     }
 }
 
-void SignalEvent::on_readable(util::Multiplex& mutiplex) {
-    (void) mutiplex;
+SignalEvent::SignalEvent(const sigset_t& mask) {
+    auto ret = pthread_sigmask(SIG_BLOCK, &mask, NULL);
+    if (ret) {
+        throw std::runtime_error("cannot block signals");
+    }
 
+    sigfd_ = signalfd(-1, &mask, SFD_NONBLOCK);
+    if (sigfd_ < 0) {
+        throw std::runtime_error("cannot create signal fd");
+    }
+}
+
+SignalEvent::~SignalEvent() {
+    ::close(sigfd_);
+}
+
+void SignalEvent::on_readable(
+    util::Multiplex&, util::FileObj*) {
     for ( ; ; ) {
         signalfd_siginfo fdsi;
         auto nread = read(sigfd_, &fdsi, sizeof(fdsi));
