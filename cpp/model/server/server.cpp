@@ -87,8 +87,8 @@ void Server::unlock_accept() {
     tid_.compare_exchange_strong(tid, std::thread::id{});
 }
 
-void Server::on_readable(util::Multiplex& multilex_, util::FileObj*) {
-    log_->debug("%lld on_readable", pthread_self());
+void Server::on_readable(util::Multiplex& multilex_) {
+    log_->debug("on_readable");
     for ( ; ; ) {
         auto fd = accept(listenfd_, NULL, NULL);
         if (fd >= 0 && manager_) {

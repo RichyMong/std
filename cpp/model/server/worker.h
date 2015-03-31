@@ -19,28 +19,24 @@ public:
     std::string email_;
 };
 
-class User : public util::TimerObj {
+class User;
+
+typedef std::shared_ptr<User> UserPtr;
+
+class UserManager {
 public:
-    User(std::shared_ptr<util::Connection>& sp, util::LogPtr log)
-        : TimerObj { 5000 }, log_ { log }, connection_ { sp } {
-    }
+    virtual ~UserManager() { }
 
-    void timeout() {
-        log_->warning("connection %d timeouted", connection_->getfd());
-        connection_->close();
-    }
+    virtual void add_user(const UserPtr& csp) = 0;
 
-private:
-    UserInfo                          userinfo_;
-    util::LogPtr                      log_;
-    std::shared_ptr<util::Connection> connection_;
+    virtual void remove_user(const UserPtr& csp) = 0;
 };
 
-
 template <class T>
-class Worker : public util::EventHandler {
+class Worker : public UserManager,
+               public std::enable_shared_from_this<Worker<T>> {
 public:
-    explicit Worker(std::shared_ptr<util::Log> log);
+    Worker(int worker_id, std::shared_ptr<util::Log> log);
 
     ~Worker();
 
@@ -58,19 +54,20 @@ public:
         return users_.size();
     }
 
-    void on_readable(util::Multiplex&, util::FileObj*) override;
-
-    void on_writeable(util::Multiplex&, util::FileObj*) override;
-
     void add_connection(const ConnPtr& csp);
 
+    virtual void add_user(const std::shared_ptr<User>& csp) override;
+
+    virtual void remove_user(const std::shared_ptr<User>& csp) override;
+
 private:
+    int           worker_id_;
     std::unordered_map<int, std::shared_ptr<User>> users_;
     std::mutex    users_mutex_;
     std::thread   thread_;
     util::LogPtr  log_;
     volatile bool running;
-    T             multilex_;
+    T             multiplex_;
     int           id_ = 0;
 };
 

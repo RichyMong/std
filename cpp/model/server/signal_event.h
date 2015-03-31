@@ -16,7 +16,7 @@ public:
 
     int getfd() const { return sigfd_; }
 
-    void on_readable(util::Multiplex& mutiplex, util::FileObj* handler);
+    void on_readable(util::Multiplex& mutiplex);
 
 private:
     void handle_signal(int signo);

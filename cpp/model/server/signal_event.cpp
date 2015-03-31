@@ -44,8 +44,7 @@ SignalEvent::~SignalEvent() {
     ::close(sigfd_);
 }
 
-void SignalEvent::on_readable(
-    util::Multiplex&, util::FileObj*) {
+void SignalEvent::on_readable(util::Multiplex&) {
     for ( ; ; ) {
         signalfd_siginfo fdsi;
         auto nread = read(sigfd_, &fdsi, sizeof(fdsi));

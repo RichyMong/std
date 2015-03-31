@@ -15,7 +15,7 @@ public:
 
     int getfd() const { return timefd_; }
 
-    void on_readable(Multiplex&, FileObj*);
+    void on_readable(Multiplex&);
 
     void reset(int msec);
 

@@ -32,7 +32,13 @@ public:
 
     void error(const char* fmt, ...);
 
+    static void set_thread_tag(const std::string& tag) {
+        Log::thread_tag = tag;
+    }
+
 private:
+    static thread_local std::string thread_tag;
+
     void output(const char* level, const char* fmt, va_list varg);
 
     FILE*    file_;

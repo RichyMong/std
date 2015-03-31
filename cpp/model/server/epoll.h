@@ -45,31 +45,17 @@ private:
     int epfd_;
 };
 
-class EventHandler {
+class FileObj {
 public:
-    virtual ~EventHandler() { }
-
-    virtual void on_readable(Multiplex&, FileObj* file) = 0;
-
-    virtual void on_writeable(Multiplex&, FileObj*) { }
-};
-
-class FileObj : public EventHandler {
-public:
-    FileObj() : handler_ { this } { }
-
     virtual ~FileObj() { }
 
     virtual int getfd() const = 0;
 
     bool is_closed() const { return getfd() == -1; }
 
-    EventHandler* handler() const { return handler_; }
+    virtual void on_readable(Multiplex&) = 0;
 
-    void set_handler(EventHandler* handler) { handler_ = handler; }
-
-protected:
-    EventHandler *handler_;
+    virtual void on_writeable(Multiplex&) { }
 };
 
 }

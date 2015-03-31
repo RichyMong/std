@@ -36,7 +36,7 @@ void Timer::reset(int msec) {
     interval_msec_ = msec;
 }
 
-void Timer::on_readable(Multiplex&, FileObj*) {
+void Timer::on_readable(Multiplex&) {
     uint64_t ticks;
     auto nread = read(timefd_, &ticks, sizeof(ticks));
     if (nread == sizeof(ticks)) {

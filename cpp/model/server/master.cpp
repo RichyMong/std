@@ -26,8 +26,10 @@ bool Master<T>::start_workers() {
         throw std::runtime_error("cannot decide the number of threads to run");
     }
 
+    log_->set_thread_tag("M0");
+
     for (auto i = 0; i != cpu_cnt; ++i) {
-        auto worker = std::make_shared<Worker<T>>(log_);
+        auto worker = std::make_shared<Worker<T>>(i + 1, log_);
         workers_.push_back(worker);
     }
 

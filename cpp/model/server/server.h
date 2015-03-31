@@ -32,7 +32,7 @@ public:
 
     int getfd() const { return listenfd_; }
 
-    void on_readable(util::Multiplex&, util::FileObj*);
+    void on_readable(util::Multiplex&);
 
     void set_manager(ConnManager* manager) { manager_ = manager; }
 

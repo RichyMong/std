@@ -82,10 +82,10 @@ int Epoll::handle_events(int timeout) {
     for (int i = 0; i < count; ++i) {
         FileObj *handler = (FileObj*)(events[i].data.ptr);
         if (events[i].events & EPOLLOUT) {
-            handler->handler()->on_writeable(*this, handler);
+            handler->on_writeable(*this);
         }
         if (events[i].events & EPOLLIN) {
-            handler->handler()->on_readable(*this, handler);
+            handler->on_readable(*this);
         }
     }
 

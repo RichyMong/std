@@ -29,17 +29,15 @@ public:
 
     int next_timer();
 
-    void add_timer(TimerObjPtr sp);
+    void add_timer(const TimerObjPtr& sp);
 
-    void del_timer(TimerObjPtr sp) {
-        timers_.erase(sp);
-    }
+    void del_timer(const TimerObjPtr& sp);
 
     void expire_timer();
 
     int getfd() const { return timefd_; }
 
-    void on_readable(Multiplex&, FileObj*);
+    void on_readable(Multiplex&);
 
 private:
     Time();
@@ -47,6 +45,8 @@ private:
     Time(const Time&);
 
     void set_timer(int msec);
+
+    void prepare_timer();
 
 private:
     int64_t curr_msec_;

@@ -30,12 +30,13 @@ public:
 
     bool is_closed() const { return sockfd_ == -1; }
 
-    void on_readable(util::Multiplex&, util::FileObj*) {
+    void on_readable(util::Multiplex& multilex) {
         char buf[4096];
         auto nread = read(sockfd_, buf, sizeof(buf));
         if (nread > 0) {
             log_->debug("%s", buf);
         } else {
+            multilex.remove(this);
             close();
         }
     }
