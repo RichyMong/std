@@ -14,19 +14,37 @@ public:
 
     ~X() { cout << "destructing " << val_ << endl; }
 
-    int use_x() {
+    void use_x() {
         xsets.erase(shared_from_this());
         cout << "use_x done\n";
-        return val_;
     }
 
 private:
     int val_;
 };
 
+class Y {
+public:
+    explicit Y(const std::shared_ptr<X>& px)
+        : px_ { px } {
+    }
+
+    void show() const {
+        auto sp = px_.lock();
+        if (sp) cout << "valid\n";
+        else cout << "invalid\n";
+    }
+
+private:
+    std::weak_ptr<X> px_;
+};
+
 int main() {
     xsets.insert(make_shared<X>(2));
+    Y y(*xsets.begin());
+    y.show();
     cout << xsets.size() << endl;
     (*xsets.begin())->use_x();
     cout << xsets.size() << endl;
+    y.show();
 }
