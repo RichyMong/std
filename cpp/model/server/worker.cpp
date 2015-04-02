@@ -15,7 +15,10 @@ class User : public util::TimerObj,
     template <class T> friend class Worker;
 public:
     User(const ConnPtr& sp, util::LogPtr log)
-        : TimerObj { 5000 }, log_ { log }, connection_ { sp } {
+        : TimerObj { 5000 },
+          log_ { log },
+          connection_ { sp },
+          in_manager_ { false } {
     }
 
     std::shared_ptr<User> getptr() {
@@ -34,14 +37,23 @@ public:
         connection_->on_readable(mplex);
 
         if (connection_->is_closed()) {
-            the_time.del_timer(getptr());
-            User::user_manager->remove_user(getptr());
+            mplex.remove(this);
+            if (in_manager_) {
+                the_time.del_timer(getptr());
+                User::user_manager->remove_user(getptr());
+            } else {
+                delete this;
+            }
         } else {
             mplex.modify(ARC_READ_EVENT | ARC_ONE_SHOT, this);
         }
     }
 
     virtual void on_writeable(util::Multiplex& mplex) override {
+        in_manager_ = true;
+
+        // okay. The user_manager now takes the ownership. However, it doesn't
+        // know when to free the resource. We need to tell it (remove_user).
         User::user_manager->add_user(std::shared_ptr<User>(this));
         mplex.modify(ARC_READ_EVENT | ARC_ONE_SHOT, this);
         log_->debug("%d writeable", getfd());
@@ -55,13 +67,18 @@ private:
     UserInfo                          userinfo_;
     util::LogPtr                      log_;
     std::shared_ptr<util::Connection> connection_;
+
+    // whether we have been managed by the user_manager.
+    // We may not be if EPOLLOUT doesn't occur on a newly accepted fd.
+    // Will this ever happen?
+    bool                              in_manager_;
 };
 
 thread_local UserManager* User::user_manager;
 
 template <class T>
 Worker<T>::Worker(int worker_id, std::shared_ptr<util::Log> log)
-    : worker_id_ { worker_id }, log_{ log }, running {true} {
+    : worker_id_ { worker_id }, log_{ log }, running_ {true} {
     thread_ = std::thread { &Worker::main_loop, this };
     if (thread_.get_id() == std::thread::id{}) {
         throw std::runtime_error("cannot start worker thread!");
@@ -70,8 +87,6 @@ Worker<T>::Worker(int worker_id, std::shared_ptr<util::Log> log)
 
 template <class T>
 Worker<T>::~Worker() {
-    users_.clear();
-
     thread_.join();
 }
 
@@ -97,11 +112,11 @@ void Worker<T>::main_loop() {
     std::ostringstream oss;
     oss << 'W' << worker_id_;
 
-    log_->set_thread_tag(oss.str());
+    log_->set_log_tag(oss.str());
 
-    multiplex_.add(ARC_READ_EVENT | ARC_ONE_SHOT, &the_time);
+    multiplex_.add(ARC_READ_EVENT, &the_time);
 
-    while (running) {
+    while (running_) {
         multiplex_.handle_events(-1);
     }
 }
@@ -128,7 +143,7 @@ void Worker<T>::assign(const ConnPtr& csp) {
 
 template <class T>
 void Worker<T>::stop() {
-    running = false;
+    running_ = false;
 }
 
 template <class T>
@@ -136,6 +151,7 @@ void Worker<T>::add_connection(const ConnPtr& csp) {
     // we have to use raw pointer here since we don't want the Multiplex
     // module to save a smart pointer. We pass this raw pointer to the
     // worker thread and then it can be taken over by a smart pointer.
+    // The memory is freed
     User* user = new User(csp, log_);
 
     // Tricky here. We use this method to make us lock free since it's safe

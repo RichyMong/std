@@ -18,6 +18,8 @@ public:
         assert(sockfd_ != -1);
     }
 
+    virtual ~Connection() = default;
+
     void close() {
         ::shutdown(sockfd_, SHUT_RDWR);
         ::close(sockfd_);
@@ -30,13 +32,12 @@ public:
 
     bool is_closed() const { return sockfd_ == -1; }
 
-    void on_readable(util::Multiplex& multilex) {
+    void on_readable(util::Multiplex&) {
         char buf[4096];
         auto nread = read(sockfd_, buf, sizeof(buf));
         if (nread > 0) {
             log_->debug("%s", buf);
         } else {
-            multilex.remove(this);
             close();
         }
     }

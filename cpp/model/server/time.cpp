@@ -34,7 +34,7 @@ void Time::update() {
         msec = ts.tv_sec * 1000 + (ts.tv_nsec / 1000000);
     }
 
-    if (curr_msec_ == msec) {
+    if ((curr_msec_ + kTimerResolution) > msec) {
         return;
     }
 
@@ -49,12 +49,6 @@ void Time::update() {
              result.tm_hour, result.tm_min, result.tm_sec, ts.tv_nsec / 1000);
 }
 
-int Time::next_timer() {
-    auto it = timers_.cbegin();
-
-    return (it != timers_.cend()) ? (*it)->timepoint() - curr_msec_ : -1;
-}
-
 void Time::on_readable(Multiplex&) {
     uint64_t ticks;
 
@@ -67,21 +61,24 @@ void Time::on_readable(Multiplex&) {
 }
 
 void Time::add_timer(const TimerObjPtr& tsp) {
-    auto timer = timers_.empty() ? 0 : (*timers_.begin())->timepoint();
+    auto old_timer = timers_.empty() ? 0 : (*timers_.begin())->timepoint();
     timers_.insert(tsp);
     auto new_timer = (*timers_.begin())->timepoint();
 
-    if (timer != new_timer) {
+    // avoid a system call if the difference is between 250ms.
+    if (old_timer != new_timer &&
+        std::abs(old_timer - new_timer) > Time::kTimerResolution) {
         prepare_timer();
     }
 }
 
 void Time::del_timer(const TimerObjPtr& tsp) {
-    auto timer = timers_.empty() ? 0 : (*timers_.begin())->timepoint();
+    auto old_timer = timers_.empty() ? 0 : (*timers_.begin())->timepoint();
     timers_.erase(tsp);
     auto new_timer = timers_.empty() ? 0 : (*timers_.begin())->timepoint();
 
-    if (timer != new_timer) {
+    if (old_timer != new_timer &&
+        std::abs(old_timer - new_timer) > Time::kTimerResolution) {
         prepare_timer();
     }
 }
@@ -100,13 +97,14 @@ void Time::expire_timer() {
     auto size = timers_.size();
 
     for (auto it = timers_.begin(); it != timers_.end(); it = timers_.erase(it)) {
-        if ((*it)->timepoint() > current_msec) {
+        if ((*it)->timepoint() > current_msec + Time::kTimerResolution) {
             break;
         }
         (*it)->timeout();
     }
 
     if (size != timers_.size()) {
+        printf("expire %zu timers\n", size - timers_.size());
         prepare_timer();
     }
 }

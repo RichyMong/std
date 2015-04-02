@@ -11,7 +11,7 @@ class FileObj;
 
 class Multiplex {
 public:
-    virtual ~Multiplex() { }
+    virtual ~Multiplex() = default;
 
     virtual bool add(int event, FileObj* handler) = 0;
 
@@ -47,7 +47,7 @@ private:
 
 class FileObj {
 public:
-    virtual ~FileObj() { }
+    virtual ~FileObj() = default;
 
     virtual int getfd() const = 0;
 

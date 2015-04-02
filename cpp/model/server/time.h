@@ -27,8 +27,6 @@ public:
         return the_time;
     }
 
-    int next_timer();
-
     void add_timer(const TimerObjPtr& sp);
 
     void del_timer(const TimerObjPtr& sp);
@@ -49,6 +47,8 @@ private:
     void prepare_timer();
 
 private:
+    static const int kTimerResolution = 250;
+
     int64_t curr_msec_;
     char    log_time_[128];
 

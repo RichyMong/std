@@ -32,12 +32,12 @@ public:
 
     void error(const char* fmt, ...);
 
-    static void set_thread_tag(const std::string& tag) {
-        Log::thread_tag = tag;
+    static void set_log_tag(const std::string& tag) {
+        Log::log_tag = tag;
     }
 
 private:
-    static thread_local std::string thread_tag;
+    static thread_local std::string log_tag;
 
     void output(const char* level, const char* fmt, va_list varg);
 

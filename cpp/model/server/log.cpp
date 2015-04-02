@@ -21,7 +21,7 @@ namespace util {
     } while (0)                                      \
 
 
-thread_local std::string Log::thread_tag = "not set";
+thread_local std::string Log::log_tag = "not set";
 
 Log::Log(const std::string& path) {
     file_ = fopen(path.c_str(), "a");
@@ -45,7 +45,7 @@ void Log::output(const char* level, const char* fmt, va_list varg) {
     char buf[BUFSIZ];
 
     auto nwrite = snprintf(buf, sizeof(buf), "%s [%s] <%s> ",
-                           cached_log_time, Log::thread_tag.c_str(), level);
+                           cached_log_time, Log::log_tag.c_str(), level);
 
     nwrite += vsnprintf(buf + nwrite, sizeof(buf) - nwrite, fmt, varg);
     nwrite += snprintf(buf + nwrite, sizeof(buf) - nwrite, "\n");

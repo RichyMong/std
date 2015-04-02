@@ -22,12 +22,6 @@ public:
 
     explicit Server(short port);
 
-    bool try_lock_accept();
-
-    void lock_accept();
-
-    void unlock_accept();
-
     void set_logger(util::LogPtr log) { log_ = log; }
 
     int getfd() const { return listenfd_; }
@@ -36,11 +30,13 @@ public:
 
     void set_manager(ConnManager* manager) { manager_ = manager; }
 
+    int port() const { return port_; }
+
 private:
-    static thread_local ConnManager* manager_;
+    ConnManager* manager_;
     util::LogPtr log_;
     int          listenfd_;
-    std::atomic<std::thread::id> tid_;
+    int          port_;
 };
 
 class ServerManager : public util::Singleston<ServerManager> {
@@ -48,16 +44,16 @@ class ServerManager : public util::Singleston<ServerManager> {
     typedef std::map<int, std::shared_ptr<Server>> ServerMap;
 
 public:
-    void add_server(short port) {
-        servers_.insert(std::make_pair(port, std::make_shared<Server>(port)));
+    void add_server(const std::shared_ptr<Server>& server) {
+        servers_.insert(std::make_pair(server->port(), server));
     }
 
-    void add_server(short port, const std::shared_ptr<Server>& server) {
-        servers_.insert(std::make_pair(port, server));
-    }
-
-    void remove_server(short port) {
+    void remove_server(int port) {
         servers_.erase(port);
+    }
+
+    void remove_server(const std::shared_ptr<Server>& server) {
+        remove_server(server->port());
     }
 
     ServerMap& servers() {

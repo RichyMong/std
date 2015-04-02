@@ -40,6 +40,10 @@ public:
 
     ~Worker();
 
+    Worker(const Worker&) = delete;
+
+    Worker& operator=(const Worker&) = delete;
+
     void stop();
 
     void main_loop();
@@ -56,9 +60,9 @@ public:
 
     void add_connection(const ConnPtr& csp);
 
-    virtual void add_user(const std::shared_ptr<User>& csp) override;
+    virtual void add_user(const UserPtr& csp) override;
 
-    virtual void remove_user(const std::shared_ptr<User>& csp) override;
+    virtual void remove_user(const UserPtr& csp) override;
 
 private:
     int           worker_id_;
@@ -66,7 +70,7 @@ private:
     std::mutex    users_mutex_;
     std::thread   thread_;
     util::LogPtr  log_;
-    volatile bool running;
+    volatile bool running_;
     T             multiplex_;
     int           id_ = 0;
 };

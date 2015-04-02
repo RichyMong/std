@@ -11,23 +11,25 @@ namespace server {
 
 template <class MulPlex>
 class Master : public ConnManager {
+    typedef std::shared_ptr<Worker<MulPlex>> WorkerPtr;
 public:
-    explicit Master(std::shared_ptr<util::Log> log)
+    explicit Master(const util::LogPtr& log)
         : log_ { log } {
     }
 
-    ~Master();
+    virtual ~Master() = default;
+
+    Master(const Master&) = delete;
+    Master& operator=(const Master&) = delete;
 
     void add_connection(const ConnPtr& csp);
 
-    int start();
+    int run();
 
 private:
     bool start_workers();
 
     void stop_workers();
-
-    typedef std::shared_ptr<Worker<MulPlex>> WorkerPtr;
 
     MulPlex                    multilex_;
     std::shared_ptr<util::Log> log_;
