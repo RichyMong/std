@@ -88,7 +88,6 @@ void Time::prepare_timer() {
     if (timer != timers_.cend()) {
         set_timer((*timer)->timepoint() - curr_msec_);
     } else {
-        printf("disable the timer\n");
         set_timer(0);
     }
 }

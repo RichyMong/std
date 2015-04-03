@@ -37,15 +37,12 @@ public:
         connection_->on_readable(mplex);
 
         if (connection_->is_closed()) {
-            mplex.remove(this);
             if (in_manager_) {
                 the_time.del_timer(getptr());
                 User::user_manager->remove_user(getptr());
             } else {
                 delete this;
             }
-        } else {
-            mplex.modify(ARC_READ_EVENT | ARC_ONE_SHOT, this);
         }
     }
 

@@ -32,12 +32,14 @@ public:
 
     bool is_closed() const { return sockfd_ == -1; }
 
-    void on_readable(util::Multiplex&) {
+    void on_readable(util::Multiplex& mplex) {
         char buf[4096];
         auto nread = read(sockfd_, buf, sizeof(buf));
         if (nread > 0) {
             log_->debug("%s", buf);
+            mplex.modify(ARC_READ_EVENT | ARC_ONE_SHOT, this);
         } else {
+            mplex.remove(this);
             close();
         }
     }
