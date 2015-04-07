@@ -12,7 +12,31 @@
 
 namespace server {
 
-int open_listening_socket(const std::string& ipaddr, short port) {
+Server::Server(const std::string& ipaddr, short port, const LogPtr& log)
+    : port_ { port }, log_ { log }, manager_ { NULL } {
+    listenfd_ = open_listening_socket(ipaddr, port);
+    if (listenfd_ < 0) {
+        throw std::runtime_error("cannot listen port");
+    }
+}
+
+Server::Server(short port, const LogPtr& log)
+    : Server("0.0.0.0", port, log) {
+}
+
+void Server::set_options(int fd) const {
+    int reuse = 1;
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+        log_->error("failed set SO_REUSEADDR option");
+    }
+
+    int nb = 1;
+    if (ioctl(fd, FIONBIO, &nb) < 0) {
+        log_->error("failed to set non-block");
+    }
+}
+
+int Server::open_listening_socket(const std::string& ipaddr, short port) const {
     std::ostringstream sport;
     sport << port;
 
@@ -39,12 +63,9 @@ int open_listening_socket(const std::string& ipaddr, short port) {
         if (fd == -1)
            continue;
 
-        int reuse = 1;
-        if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
-        }
-
         if (::bind(fd, rp->ai_addr, rp->ai_addrlen) == 0 &&
-            ::listen(fd, 10) == 0) {
+            ::listen(fd, 511) == 0) {
+            set_options(fd);
             break;
         }
 
@@ -52,38 +73,22 @@ int open_listening_socket(const std::string& ipaddr, short port) {
         fd = -1;
     }
 
-    int nb = 1;
-    if (ioctl(fd, FIONBIO, &nb) < 0) {
-    }
-
     freeaddrinfo(result);
 
     return fd;
 }
 
-Server::Server(const std::string& ipaddr, short port)
-    : port_ { port } {
-    listenfd_ = open_listening_socket(ipaddr, port);
-    if (listenfd_ < 0) {
-        throw std::runtime_error("cannot listen port");
-    }
-}
-
-Server::Server(short port)
-    : Server("0.0.0.0", port) {
-}
-
 void Server::on_readable(util::Multiplex& multilex_) {
-    log_->debug("on_readable");
     for ( ; ; ) {
         auto fd = accept(listenfd_, NULL, NULL);
         if (fd >= 0 && manager_) {
-            manager_->add_connection(new util::Connection(fd, log_));
+            manager_->add_connection(ConnPtr(new util::Connection(fd, log_)));
         }
 
         if (errno != EINTR)
             break;
     }
+
     multilex_.modify(ARC_READ_EVENT | ARC_ONE_SHOT, this);
 }
 

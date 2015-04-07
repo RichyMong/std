@@ -14,7 +14,7 @@ class User : public util::TimerObj,
              public std::enable_shared_from_this<User> {
     template <class T> friend class Worker;
 public:
-    User(const ConnPtr& sp, util::LogPtr log)
+    User(const ConnPtr& sp, const LogPtr& log)
         : TimerObj { 5000 },
           log_ { log },
           connection_ { sp },
@@ -58,23 +58,23 @@ public:
     }
 
 private:
-    // all the user of this thread will by controled by the same manager.
+    // all the user of this thread will be controled by the same manager.
     static thread_local UserManager*  user_manager;
 
-    UserInfo                          userinfo_;
-    util::LogPtr                      log_;
-    std::shared_ptr<util::Connection> connection_;
+    LogPtr   log_;
+    ConnPtr  connection_;
+    UserInfo userinfo_;
 
     // whether we have been managed by the user_manager.
     // We may not be if EPOLLOUT doesn't occur on a newly accepted fd.
     // Will this ever happen?
-    bool                              in_manager_;
+    bool     in_manager_;
 };
 
 thread_local UserManager* User::user_manager;
 
 template <class T>
-Worker<T>::Worker(int worker_id, std::shared_ptr<util::Log> log)
+Worker<T>::Worker(int worker_id, const LogPtr& log)
     : worker_id_ { worker_id }, log_{ log }, running_ {true} {
     thread_ = std::thread { &Worker::main_loop, this };
     if (thread_.get_id() == std::thread::id{}) {
@@ -148,7 +148,7 @@ void Worker<T>::add_connection(const ConnPtr& csp) {
     // we have to use raw pointer here since we don't want the Multiplex
     // module to save a smart pointer. We pass this raw pointer to the
     // worker thread and then it can be taken over by a smart pointer.
-    // The memory is freed
+    // The memory is freed when the connection is closed.
     User* user = new User(csp, log_);
 
     // Tricky here. We use this method to make us lock free since it's safe

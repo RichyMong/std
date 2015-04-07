@@ -45,8 +45,8 @@ private:
     LogLevel level_ = LogLevel::kDebug;
 };
 
-typedef std::shared_ptr<util::Log> LogPtr;
-
 }
+
+typedef std::shared_ptr<util::Log> LogPtr;
 
 #endif // MODEL_SERVER_LOG_H

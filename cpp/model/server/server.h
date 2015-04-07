@@ -18,11 +18,9 @@ public:
 
 class Server : public util::FileObj {
 public:
-    Server(const std::string& addr, short port);
+    Server(const std::string& addr, short port, const LogPtr& log);
 
-    explicit Server(short port);
-
-    void set_logger(util::LogPtr log) { log_ = log; }
+    explicit Server(short port, const LogPtr& log);
 
     int getfd() const { return listenfd_; }
 
@@ -33,10 +31,13 @@ public:
     int port() const { return port_; }
 
 private:
-    ConnManager* manager_;
-    util::LogPtr log_;
+    int  open_listening_socket(const std::string& ipaddr, short port) const;
+    void set_options(int fd) const;
+
     int          listenfd_;
     int          port_;
+    LogPtr       log_;
+    ConnManager* manager_;
 };
 
 class ServerManager : public util::Singleston<ServerManager> {

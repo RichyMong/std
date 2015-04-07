@@ -7,13 +7,14 @@
 #include <memory>
 #include <unistd.h>
 #include <assert.h>
+#include <string.h>
 #include <sys/socket.h>
 
 namespace util {
 
 class Connection : public util::FileObj {
 public:
-    Connection(int fd, util::LogPtr log)
+    Connection(int fd, LogPtr log)
         : sockfd_ { fd }, log_ { log } {
         assert(sockfd_ != -1);
     }
@@ -39,6 +40,9 @@ public:
             log_->debug("%s", buf);
             mplex.modify(ARC_READ_EVENT | ARC_ONE_SHOT, this);
         } else {
+            if (nread < 0) {
+                log_->error("read error on fd[%d]: %s", sockfd_, strerror(errno));
+            }
             mplex.remove(this);
             close();
         }
@@ -48,13 +52,12 @@ private:
     Connection(const Connection&);
     Connection& operator=(const Connection&);
 
-    int          sockfd_;
-    util::LogPtr log_;
+    int    sockfd_;
+    LogPtr log_;
 };
 
 }
 
-// typedef std::shared_ptr<util::Connection> ConnPtr;
-typedef util::Connection* ConnPtr;
+typedef std::shared_ptr<util::Connection> ConnPtr;
 
 #endif // MODEL_SERVER_CONNECTION_H

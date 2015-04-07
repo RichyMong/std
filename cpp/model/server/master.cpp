@@ -50,12 +50,11 @@ int Master<T>::run() {
 
     start_workers();
 
-    server_manager.add_server(std::make_shared<Server>(12345));
+    server_manager.add_server(std::make_shared<Server>(12345, log_));
 
     auto servers = server_manager.servers();
     for (auto& it : servers) {
         it.second->set_manager(this);
-        it.second->set_logger(log_);
         multilex_.add(ARC_READ_EVENT | ARC_ONE_SHOT, it.second.get());
     }
 

@@ -13,7 +13,7 @@ template <class MulPlex>
 class Master : public ConnManager {
     typedef std::shared_ptr<Worker<MulPlex>> WorkerPtr;
 public:
-    explicit Master(const util::LogPtr& log)
+    explicit Master(const LogPtr& log)
         : log_ { log } {
     }
 
@@ -31,10 +31,10 @@ private:
 
     void stop_workers();
 
-    MulPlex                    multilex_;
-    std::shared_ptr<util::Log> log_;
-    std::vector<WorkerPtr>     workers_;
-    server::SignalEvent        sigevent_;
+    MulPlex                multilex_;
+    LogPtr                 log_;
+    std::vector<WorkerPtr> workers_;
+    server::SignalEvent    sigevent_;
 };
 
 extern template class Master<util::Epoll>;

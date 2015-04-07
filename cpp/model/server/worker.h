@@ -36,7 +36,7 @@ template <class T>
 class Worker : public UserManager,
                public std::enable_shared_from_this<Worker<T>> {
 public:
-    Worker(int worker_id, std::shared_ptr<util::Log> log);
+    Worker(int worker_id, const LogPtr& log);
 
     ~Worker();
 
@@ -69,7 +69,7 @@ private:
     std::unordered_map<int, std::shared_ptr<User>> users_;
     std::mutex    users_mutex_;
     std::thread   thread_;
-    util::LogPtr  log_;
+    LogPtr        log_;
     volatile bool running_;
     T             multiplex_;
     int           id_ = 0;
