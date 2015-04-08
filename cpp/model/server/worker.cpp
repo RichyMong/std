@@ -114,7 +114,7 @@ void Worker<T>::main_loop() {
     multiplex_.add(ARC_READ_EVENT, &the_time);
 
     while (running_) {
-        multiplex_.handle_events(-1);
+        multiplex_.handle_events(500);
     }
 }
 

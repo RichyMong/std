@@ -1,5 +1,6 @@
 #include "log.h"
 #include "time.h"
+#include <sstream>
 #include <stdexcept>
 #include <cstdio>
 #include <cstdarg>
@@ -9,14 +10,14 @@
 
 namespace util {
 
-#define do_output(_level, _level_str)                \
+#define do_output(_level, _level_str, _fmt)          \
     do {                                             \
         if (level_ < (_level)) {                     \
             return;                                  \
         }                                            \
         va_list varg;                                \
-        va_start(varg, fmt);                         \
-        output(_level_str, fmt, varg);               \
+        va_start(varg, _fmt);                        \
+        output(_level_str, _fmt, varg);              \
         va_end(varg);                                \
     } while (0)                                      \
 
@@ -42,20 +43,19 @@ Log::~Log() {
 void Log::output(const char* level, const char* fmt, va_list varg) {
     assert(fmt && fmt[0]);
 
+    char vargs[BUFSIZ];
+    (void) vsnprintf(vargs, sizeof(vargs), fmt, varg);
+
     char buf[BUFSIZ];
+    auto nwrite = snprintf(buf, sizeof(buf), "%s [%s] <%s> %s\n",
+                           cached_log_time, Log::log_tag.c_str(),
+                           level, vargs);
 
-    auto nwrite = snprintf(buf, sizeof(buf), "%s [%s] <%s> ",
-                           cached_log_time, Log::log_tag.c_str(), level);
-
-    nwrite += vsnprintf(buf + nwrite, sizeof(buf) - nwrite, fmt, varg);
-    nwrite += snprintf(buf + nwrite, sizeof(buf) - nwrite, "\n");
     if (nwrite >= (int) sizeof(buf)) {
-        auto end = buf + sizeof(buf) - 3;
-        auto pos = strrchr(buf, ' ');
-        if (pos == NULL) {
-            pos = end - 5;
-        }
-        while (pos != end) {
+        auto newline = buf + sizeof(buf) - 2;
+        *newline = '\n';
+        auto pos = strrchr(buf, ' '); // pos cannot be NULL
+        while (pos != newline) {
             *pos++ = '.';
         }
         nwrite = sizeof(buf);
@@ -66,19 +66,19 @@ void Log::output(const char* level, const char* fmt, va_list varg) {
 }
 
 void Log::debug(const char* fmt, ...) {
-    do_output(LogLevel::kDebug, "D");
+    do_output(LogLevel::kDebug, "D", fmt);
 }
 
 void Log::warning(const char* fmt, ...) {
-    do_output(LogLevel::kWarn, "W");
+    do_output(LogLevel::kWarn, "W", fmt);
 }
 
 void Log::info(const char* fmt, ...) {
-    do_output(LogLevel::kInfo, "I");
+    do_output(LogLevel::kInfo, "I", fmt);
 }
 
 void Log::error(const char* fmt, ...) {
-    do_output(LogLevel::kError, "E");
+    do_output(LogLevel::kError, "E", fmt);
 }
 
 }
