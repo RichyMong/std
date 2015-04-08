@@ -8,13 +8,11 @@
 
 namespace server {
 
-template <class T>
-bool worker_cmp(const std::shared_ptr<Worker<T>>& a, const std::shared_ptr<Worker<T>>& b) {
+bool worker_cmp(const std::shared_ptr<Worker>& a, const std::shared_ptr<Worker>& b) {
     return a->user_cnt() < b->user_cnt();
 }
 
-template <class T>
-bool Master<T>::start_workers() {
+bool Master::start_workers() {
     auto cpu_cnt = util::cpu_cnt();
     if (cpu_cnt <= 0) {
         throw std::runtime_error("cannot decide the number of threads to run");
@@ -23,15 +21,14 @@ bool Master<T>::start_workers() {
     log_->set_log_tag("M0");
 
     for (auto i = 0; i < cpu_cnt; ++i) {
-        auto worker = std::make_shared<Worker<T>>(i + 1, log_);
+        auto worker = std::make_shared<Worker>(i + 1, log_);
         workers_.push_back(worker);
     }
 
     return true;
 }
 
-template <class T>
-void Master<T>::stop_workers() {
+void Master::stop_workers() {
     for (auto& worker : workers_) {
         worker->stop();
     }
@@ -39,21 +36,16 @@ void Master<T>::stop_workers() {
     workers_.clear();
 }
 
-template <class T>
-void Master<T>::add_connection(const ConnPtr& csp) {
+void Master::add_connection(const ConnPtr& csp) {
     workers_[0]->add_connection(csp);
 }
 
-template <class T>
-int Master<T>::run() {
+int Master::run() {
     multilex_.add(ARC_READ_EVENT, &sigevent_);
 
     start_workers();
 
-    server_manager.add_server(std::make_shared<Server>(12345, log_));
-
-    auto servers = server_manager.servers();
-    for (auto& it : servers) {
+    for (auto& it : servers_) {
         it.second->set_manager(this);
         multilex_.add(ARC_READ_EVENT | ARC_ONE_SHOT, it.second.get());
     }
@@ -62,10 +54,11 @@ int Master<T>::run() {
         int count = multilex_.handle_events(5000);
 
         if (count) {
-            std::sort(workers_.begin(), workers_.end(), worker_cmp<T>);
+            std::sort(workers_.begin(), workers_.end(), worker_cmp);
         } else {
             for (const auto& worker : workers_) {
-                log_->info("cnt: %d", worker->user_cnt());
+                log_->info("worker[%d] user count: %d",
+                           worker->worker_id(), worker->user_cnt());
             }
         }
     }
@@ -74,7 +67,5 @@ int Master<T>::run() {
 
     return 0;
 }
-
-template class Master<util::Epoll>;
 
 }

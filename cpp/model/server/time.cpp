@@ -50,13 +50,7 @@ void Time::update() {
 }
 
 void Time::on_readable(Multiplex&) {
-    uint64_t ticks;
-
-    auto nread = read(timefd_, &ticks, sizeof(ticks));
-    if (nread != sizeof(ticks)) {
-        std::perror("read timer");
-    }
-
+    // we don't need to read the ticks since we know the expired time point.
     expire_timer();
 }
 
@@ -103,7 +97,6 @@ void Time::expire_timer() {
     }
 
     if (size != timers_.size()) {
-        printf("expire %zu timers\n", size - timers_.size());
         prepare_timer();
     }
 }

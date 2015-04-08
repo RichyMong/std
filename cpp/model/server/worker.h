@@ -32,9 +32,8 @@ public:
     virtual void remove_user(const UserPtr& csp) = 0;
 };
 
-template <class T>
 class Worker : public UserManager,
-               public std::enable_shared_from_this<Worker<T>> {
+               public std::enable_shared_from_this<Worker> {
 public:
     Worker(int worker_id, const LogPtr& log);
 
@@ -52,6 +51,8 @@ public:
 
     void assign(const ConnPtr& csp);
 
+    int worker_id() const { return worker_id_; }
+
     size_t user_cnt() const {
         // we are not guarded by a lock here since it's not important even
         // if we get an imprecise value.
@@ -65,17 +66,15 @@ public:
     virtual void remove_user(const UserPtr& csp) override;
 
 private:
-    int           worker_id_;
+    const int     worker_id_;
     std::unordered_map<int, std::shared_ptr<User>> users_;
     std::mutex    users_mutex_;
     std::thread   thread_;
     LogPtr        log_;
     volatile bool running_;
-    T             multiplex_;
+    util::Epoll   multiplex_;
     int           id_ = 0;
 };
-
-extern template class Worker<util::Epoll>;
 
 }
 

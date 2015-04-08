@@ -12,7 +12,7 @@ namespace server {
 class User : public util::TimerObj,
              public util::FileObj,
              public std::enable_shared_from_this<User> {
-    template <class T> friend class Worker;
+    friend class Worker;
 public:
     User(const ConnPtr& sp, const LogPtr& log)
         : TimerObj { 5000 },
@@ -73,8 +73,7 @@ private:
 
 thread_local UserManager* User::user_manager;
 
-template <class T>
-Worker<T>::Worker(int worker_id, const LogPtr& log)
+Worker::Worker(int worker_id, const LogPtr& log)
     : worker_id_ { worker_id }, log_{ log }, running_ {true} {
     thread_ = std::thread { &Worker::main_loop, this };
     if (thread_.get_id() == std::thread::id{}) {
@@ -82,18 +81,15 @@ Worker<T>::Worker(int worker_id, const LogPtr& log)
     }
 }
 
-template <class T>
-Worker<T>::~Worker() {
+Worker::~Worker() {
     thread_.join();
 }
 
-template <class T>
-void Worker<T>::add_user(const UserPtr& uptr) {
+void Worker::add_user(const UserPtr& uptr) {
     users_.insert(std::make_pair(++id_, uptr));
 }
 
-template <class T>
-void Worker<T>::remove_user(const UserPtr& uptr) {
+void Worker::remove_user(const UserPtr& uptr) {
     for (auto it = users_.cbegin(); it != users_.cend(); ++it) {
         if (it->second == uptr) {
             users_.erase(it);
@@ -102,8 +98,7 @@ void Worker<T>::remove_user(const UserPtr& uptr) {
     }
 }
 
-template <class T>
-void Worker<T>::main_loop() {
+void Worker::main_loop() {
     User::user_manager = this;
 
     std::ostringstream oss;
@@ -122,8 +117,7 @@ void Worker<T>::main_loop() {
 // The functions below will be called through the main thread.
 // Please make sure they are thread-safe.
 
-template <class T>
-bool Worker<T>::try_assign(const ConnPtr& csp) {
+bool Worker::try_assign(const ConnPtr& csp) {
     std::unique_lock<std::mutex> lck { users_mutex_, std::defer_lock };
     if (lck.try_lock()) {
         add_connection(csp);
@@ -132,19 +126,16 @@ bool Worker<T>::try_assign(const ConnPtr& csp) {
     return false;
 }
 
-template <class T>
-void Worker<T>::assign(const ConnPtr& csp) {
+void Worker::assign(const ConnPtr& csp) {
     std::lock_guard<std::mutex> lck(users_mutex_);
     add_connection(csp);
 }
 
-template <class T>
-void Worker<T>::stop() {
+void Worker::stop() {
     running_ = false;
 }
 
-template <class T>
-void Worker<T>::add_connection(const ConnPtr& csp) {
+void Worker::add_connection(const ConnPtr& csp) {
     // we have to use raw pointer here since we don't want the Multiplex
     // module to save a smart pointer. We pass this raw pointer to the
     // worker thread and then it can be taken over by a smart pointer.
@@ -155,7 +146,5 @@ void Worker<T>::add_connection(const ConnPtr& csp) {
     // to take action on the same epoll fd in muti-thread environment.
     multiplex_.add(ARC_WRITE_EVENT | ARC_ONE_SHOT, user);
 }
-
-template class Worker<util::Epoll>;
 
 }

@@ -9,9 +9,9 @@
 
 namespace server {
 
-template <class MulPlex>
-class Master : public ConnManager {
-    typedef std::shared_ptr<Worker<MulPlex>> WorkerPtr;
+class Master : public ServerManager {
+    typedef std::shared_ptr<Worker> WorkerPtr;
+    typedef std::map<int, std::shared_ptr<Server>> ServerMap;
 public:
     explicit Master(const LogPtr& log)
         : log_ { log } {
@@ -26,18 +26,29 @@ public:
 
     int run();
 
+    void add_server(const std::shared_ptr<Server>& server) {
+        servers_.insert(std::make_pair(server->port(), server));
+    }
+
+    void remove_server(int port) {
+        servers_.erase(port);
+    }
+
+    void remove_server(const std::shared_ptr<Server>& server) {
+        remove_server(server->port());
+    }
+
 private:
     bool start_workers();
 
     void stop_workers();
 
-    MulPlex                multilex_;
+    util::Epoll            multilex_;
     LogPtr                 log_;
+    ServerMap              servers_;
     std::vector<WorkerPtr> workers_;
     server::SignalEvent    sigevent_;
 };
-
-extern template class Master<util::Epoll>;
 
 }
 

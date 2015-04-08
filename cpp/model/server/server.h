@@ -11,7 +11,7 @@
 
 namespace server {
 
-class ConnManager {
+class ServerManager {
 public:
     virtual void add_connection(const ConnPtr& csp) = 0;
 };
@@ -26,7 +26,7 @@ public:
 
     void on_readable(util::Multiplex&);
 
-    void set_manager(ConnManager* manager) { manager_ = manager; }
+    void set_manager(ServerManager* manager) { manager_ = manager; }
 
     int port() const { return port_; }
 
@@ -37,39 +37,9 @@ private:
     int          listenfd_;
     int          port_;
     LogPtr       log_;
-    ConnManager* manager_;
-};
-
-class ServerManager : public util::Singleston<ServerManager> {
-    friend class util::Singleston<ServerManager>;
-    typedef std::map<int, std::shared_ptr<Server>> ServerMap;
-
-public:
-    void add_server(const std::shared_ptr<Server>& server) {
-        servers_.insert(std::make_pair(server->port(), server));
-    }
-
-    void remove_server(int port) {
-        servers_.erase(port);
-    }
-
-    void remove_server(const std::shared_ptr<Server>& server) {
-        remove_server(server->port());
-    }
-
-    ServerMap& servers() {
-        return servers_;
-    }
-
-private:
-    ServerManager() { }
-    ServerManager(const ServerManager&);
-
-    ServerMap servers_;
+    ServerManager* manager_;
 };
 
 }
 
-#define server_manager server::ServerManager::instance()
-
-#endif // MODE_UTIL_SERVER_H
+#endif // MODEL_UTIL_SERVER_H
