@@ -2,6 +2,7 @@
 #define MODEL_SERVER_SIGNAL_H
 
 #include "epoll.h"
+#include <initializer_list>
 #include <signal.h>
 
 namespace server {
@@ -10,7 +11,7 @@ class SignalEvent : public util::FileObj {
 public:
     SignalEvent();
 
-    explicit SignalEvent(const sigset_t& mask);
+    explicit SignalEvent(const std::initializer_list<int>& signals);
 
     ~SignalEvent();
 

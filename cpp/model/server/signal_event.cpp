@@ -28,7 +28,14 @@ SignalEvent::SignalEvent() {
     }
 }
 
-SignalEvent::SignalEvent(const sigset_t& mask) {
+SignalEvent::SignalEvent(const std::initializer_list<int>& signals) {
+    sigset_t mask;
+
+    sigemptyset(&mask);
+    for (auto signo : signals) {
+        sigaddset(&mask, signo);
+    }
+
     auto ret = pthread_sigmask(SIG_BLOCK, &mask, NULL);
     if (ret) {
         throw std::runtime_error("cannot block signals");
