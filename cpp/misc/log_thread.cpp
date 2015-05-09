@@ -18,7 +18,7 @@ condition_variable cv;
 void worker_routine() {
     for (auto i = 0; i < MAX_LOG / thread_num; ++i) {
         unique_lock<mutex> lck { log_mutex };
-        logs.push_back(string("this is a test just for test."));
+        logs.push_back(string("this is a test just for test.\n"));
         cv.notify_one();
     }
 }
@@ -36,7 +36,7 @@ void log_routine() {
             content = logs.front();
             logs.pop_front();
         }
-        fprintf(file, "%s\n", content.c_str());
+        fwrite_unlocked(content.c_str(), content.size(), 1, file);
     }
 
 }

@@ -67,6 +67,8 @@ public:
     deadline_.cancel();
     if (!error)
     {
+      deadline_.cancel();
+      std::cout << "data " << buffer << std::endl;
     }
     else
     {
