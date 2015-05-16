@@ -8,9 +8,9 @@ CXX = g++
 CXXFLAGS += -g -Wall -std=c++14
 
 ifeq ($(DEBUG), yes)
-CFLAGS += -DDEBUG
+CXXFLAGS += -DDEBUG
 else
-CFLAGS += -DNDEBUG
+CXXFLAGS += -DNDEBUG
 endif
 
 define src_to_obj
@@ -52,8 +52,7 @@ $(eval libname := $(addprefix $(BIN_DIR)/,$(1)))
 .DEFAULT_GOAL = $(libname)
 $(libname): $(strip $(objs))
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS) -shared -o $(libname) $(objs) $(LDLIBS)
-
+	$(CC) $(CXXFLAGS) -shared -o $(libname) $(objs) $(LDLIBS) 
 .PHONY: clean
 clean:
 	-@rm -fr $(1) $(OBJ_DIR)
