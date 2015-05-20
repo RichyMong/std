@@ -2,6 +2,10 @@
 #include <memory>
 #include <iostream>
 
+#ifdef DEBUG
+#define new DEBUG_NEW
+#endif
+
 struct X {
     long l;
     int i;

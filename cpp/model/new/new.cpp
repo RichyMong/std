@@ -5,7 +5,8 @@
 
 #ifdef DEBUG
 
-static constexpr size_t head_size = 64;
+static constexpr uint64_t magic = 0x01332bfd;
+static constexpr size_t head_size = 64; // > sizeof(magic)
 
 void* operator new(size_t size, const char* file, int line)
 {
@@ -13,20 +14,28 @@ void* operator new(size_t size, const char* file, int line)
 
     std::cout << "allocate " << size << " bytes: " << (void*)ptr << std::endl;
 
-    snprintf(ptr, head_size, "%s:%d", file, line);
+    *(uint64_t*) ptr = magic;
+
+    snprintf(ptr + sizeof(magic), head_size - sizeof(magic), "%s:%d", file, line);
 
     return ptr + head_size;
 }
 
 void operator delete(void* ptr) noexcept
 {
-    std::cout << "free " << ptr << std::endl;
+    std::cout << "try to free " << ptr << std::endl;
 
-    char *pos = (char *)ptr;
+    if (!ptr) {
+        return;
+    }
 
-    assert((size_t) pos > head_size);
+    char* cptr = (char *) ptr - head_size;
+    if (*(decltype(magic)*) (cptr) != magic) {
+        free(ptr);
+    } else {
+        free(cptr);
+    }
 
-    free(pos - head_size);
 }
 
 #endif
