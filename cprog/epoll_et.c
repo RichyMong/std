@@ -42,6 +42,14 @@ void run_server(int port)
         char buf[129];
         int x;
         printf("clientfd: %d\n", client);
+        struct linger linger;
+        linger.l_onoff = 1;
+        linger.l_linger = 0;
+        setsockopt(client, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
+        close(client);
+        continue;
+
+
         if ((x = read(client, buf, 128)) > 0) {
             buf[x] = 0;
             printf("%s\n", buf);
@@ -93,6 +101,9 @@ void run_client(int port)
         printf("connecting...\n");
     else if (rc == 0)
         printf("connected to server.\n");
+    else {
+        perror("connect");
+    }
 
     add_epoll_event(epfd, connfd, EPOLLIN | EPOLLOUT);
 
