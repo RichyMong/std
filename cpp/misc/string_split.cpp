@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <iterator>
 
 using namespace std;
 
@@ -38,4 +39,8 @@ int main()
     auto slices = split_string("ab,:cd-efg:", ",:-");
 
     std::for_each(slices.cbegin(), slices.cend(), print);
+
+    std::ostream_iterator<std::string> oit(std::cout);
+
+    std::copy(slices.cbegin(), slices.cend(), oit);
 }
