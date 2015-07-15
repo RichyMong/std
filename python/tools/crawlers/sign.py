@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+
+# -*- coding: UTF-8 -*-
+
+import sys
+import os
 import re
 import urllib
 import urlparse
@@ -6,7 +11,8 @@ import pickle
 import getpass
 import requests
 import bs4
-from datetime import datetime
+import optparse
+import time
 
 def extract_form(response):
     bsoup = bs4.BeautifulSoup(response.text)
@@ -23,9 +29,18 @@ def extract_form(response):
 
 class OASession(requests.Session):
     user_agent = 'Mozilla/5.0 (X11; Linux x86_64; rv:38.0) Gecko/20100101 Firefox/38.0'
+    oa_url = 'http://web.oa.wanmei.com/'
 
-    def __init__(self):
+    def __init__(self, interactive = False):
         super(OASession, self).__init__()
+        if not self.check_cookie():
+            if interactive:
+                self.user = raw_input('Enter username: ')
+                self.passwd = getpass.getpass('Enter password: ')
+            else:
+                self.user = 'mengfanke'
+                self.passwd = 'wanmei'
+            self.login()
 
     def post(self, url, content, **headers):
         headers['User-Agent'] = OASession.user_agent
@@ -56,101 +71,124 @@ class OASession(requests.Session):
         with open('cookie.txt', 'w') as outfile:
             pickle.dump(self.cookies, outfile)
 
-    def read_cookie(self):
+    def check_cookie(self):
         try:
             with open('cookie.txt', 'r') as infile:
                 self.cookies = pickle.load(infile)
-                return True
-        except:
+                # make a dump request to validate the SMSESSION
+                resp = self.get(OASession.oa_url)
+                if resp.headers.get('set-cookie', None):
+                    return True
+                self.cookies.clear()
+                return False
+        except IOError:
             pass
         return False
 
-class Employee(object):
-    sign_url = 'http://web.oa.wanmei.com/OaHomePage/Handler/signInOut.ashx'
-    min_working_hours = 8
-
-    def __init__(self):
-        self.session = OASession()
-        if not self.session.read_cookie():
-            self.user = raw_input('Enter username: ')
-            self.passwd = getpass.getpass('Enter password: ')
-            self.login()
-
     def login(self):
-        self.session.cookies['SignonDefault'] = self.user
-        self.session.cookies['SM_USER'] = self.user
+        self.cookies['SignonDefault'] = self.user
+        self.cookies['SM_USER'] = self.user
 
-        resp = self.session.get('http://web.oa.wanmei.com/')
+        resp = self.get(OASession.oa_url)
 
         login_url, params = extract_form(resp)
         params['USER'] = self.user
         params['PASSWORD'] = self.passwd
 
-        login_resp = self.session.post(login_url, urllib.urlencode(params), Referer = resp.url)
+        login_resp = self.post(login_url, urllib.urlencode(params), Referer = resp.url)
 
         cred_url, cred_params = extract_form(login_resp)
 
-        cred_resp = self.session.post(cred_url, urllib.urlencode(params), Referer = login_url)
+        cred_resp = self.post(cred_url, urllib.urlencode(params), Referer = login_url)
 
         ref_url = re.search(r'top.location.href = "(.+)"', cred_resp.text).group(1)
 
-        resp = self.session.post(urlparse.urljoin(ref_url, 'IndexFrame/IndexRedirect.aspx'), '', Refer = ref_url)
+        resp = self.post(urlparse.urljoin(ref_url, 'IndexFrame/IndexRedirect.aspx'), '', Refer = ref_url)
 
         if resp.text.lower() == 'false':
             location = "/Pages/index.htm"
         else:
             location = "/int/default.htm"
 
-        resp = self.session.get(urlparse.urljoin(ref_url, location), Refer = ref_url)
+        resp = self.get(urlparse.urljoin(ref_url, location), Refer = ref_url)
 
-        self.session.cookies.clear(domain = 'sso.oa.wanmei.com')
+        self.cookies.clear(domain = 'sso.oa.wanmei.com')
+
+class Employee(object):
+    sign_url = 'http://web.oa.wanmei.com/OaHomePage/Handler/signInOut.ashx'
+    min_working_hours = 8
+
+    def __init__(self, interactive = False):
+        self.session = OASession(interactive)
 
     def save(self):
         self.session.save_cookie()
 
     def check_sign_info(self):
         resp = self.session.post(Employee.sign_url, 'method=GetSignInfo')
-        print(resp.text)
         result = re.search(r"result:'([\w:]+)'", resp.text).group(1)
+        action = re.search(r"actionType:'([\w:]+)'", resp.text).group(1)
 
-        return result == 'true'
+        return result == 'true' and action != 'normalNoData'
 
-    def check_sign_out(self):
+    def work_time(self):
         resp = self.session.post(Employee.sign_url, 'method=DoSignOutCheck')
         print(resp.text)
-
-    def sign_out(self):
-        resp = check_sign_out(cookie)
         workTime = re.search(r"'workTime':'([\d:]+)'", resp.text).group(1)
-        print(workTime)
-        hour, minute = map(int, workTime.split(':'))
+        return map(int, workTime.split(':'))
+
+    def sign_out(self, interactive = True):
+        hour, minute = self.work_time()
         if hour < Employee.min_working_hours:
+            if not interactive:
+                return
             confirm = raw_input('Your working time is less than {} hours({} hours '
                                 'and {} minutes). Are your sure to sign out?[y/n]'.format(
                                     Employee.min_working_hours, hour, minute))
-            print(confirm)
             if confirm[0] != 'y':
-                return resp
+                return
         resp = self.session.post(Employee.sign_url, 'method=DoSignOut')
         print(resp.text)
+        result = re.search(r"result:'([\w]+)'", resp.text).group(1)
+        action = re.search(r"actionType:'([\w]+)'", resp.text).group(1)
+        if result == 'true' and action == 'signOutSuccess':
+            print('sign out successfully')
 
 
     def sign_in(self):
+        if self.check_sign_info():
+            print('already signed in')
+            return
         resp = self.session.post(Employee.sign_url, 'method=DoSignIn')
         print(resp.text)
-        result = re.search(r"actionType:'([\w]+)'", resp.text).group(1)
-        if result != 'signInSuccess':
-            print('failed to sign in')
+        result = re.search(r"result:'([\w]+)'", resp.text).group(1)
+        action = re.search(r"actionType:'([\w]+)'", resp.text).group(1)
+
+        return result == 'true' and action == 'signInSuccess'
 
 
 if __name__ == '__main__':
-    account = Employee()
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-    if not account.check_sign_info():
-        account.sign_in()
+    optp = optparse.OptionParser('usage: %prog [options] action')
+    optp.add_option('-q', '--quiet', help = 'non-interactive mode',
+                    action = 'store_false', dest = 'interactive', default = True)
+    opts, args = optp.parse_args()
+
+    account = Employee(opts.interactive)
+
+    if len(args) < 1:
+        if not account.check_sign_info():
+            while not account.sign_in():
+                time.sleep(5)
+        else:
+            account.sign_out(opts.interactive)
     else:
-        now = datetime.now()
-        if now.hour > 18:
-            account.sign_out()
+        if args[0] == 'in':
+            account.sign_in()
+        elif args[0] == 'out':
+            account.sign_out(opts.interactive)
+        else:
+            account.work_time()
 
     account.save()
