@@ -1,7 +1,12 @@
-#!/usr/bin/env python
-
 # -*- coding: UTF-8 -*-
 
+#!/usr/bin/env python
+
+'''
+Try to sign in automatically on workdays. We decide if a day is a working
+day from holiday information provided by fangjia.911cha.com.
+If you do extra work on non workdays, please sing in manually.
+'''
 import sys
 import os
 import re
@@ -13,6 +18,8 @@ import requests
 import bs4
 import optparse
 import time
+import datetime
+
 
 def extract_form(response):
     bsoup = bs4.BeautifulSoup(response.text)
@@ -167,7 +174,44 @@ class Employee(object):
         return result == 'true' and action == 'signInSuccess'
 
 
+def is_workday(year, month, day):
+    error = False
+
+    try:
+        response = requests.get('http://fangjia.911cha.com/{}.html'.format(year))
+    except:
+        error = True
+
+    the_day = '{}年{}月{}日'.format(year, month, day)
+
+    if error or response.status_code != requests.codes.ok:
+        # if we cannot get the information, we could only decide whether this
+        # day is a workday by its weekday.
+        date = datetime.datetime(year, month, day)
+        if date.weekday in (5, 6):
+            print('{} is not a working day'.format(the_day))
+            return False
+        return True
+
+    bsoup = bs4.BeautifulSoup(response.text)
+    non_workdays = bsoup.find_all('td', class_ = 'green zhoumo')
+    non_workdays += bsoup.find_all('td', class_ = 'jiari')
+    for tag in non_workdays:
+        if tag['title'].encode('utf-8').find(the_day) > 0:
+            print('{} is not a working day'.format(the_day))
+            return False
+    return True
+
+
+def is_today_workday():
+    now = datetime.datetime.now()
+    return is_workday(now.year, now.month, now.day)
+
+
 if __name__ == '__main__':
+    if not is_today_workday():
+        sys.exit(0)
+
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
     optp = optparse.OptionParser('usage: %prog [options] action')
