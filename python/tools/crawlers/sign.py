@@ -1,12 +1,12 @@
-# -*- coding: UTF-8 -*-
-
 #!/usr/bin/env python
+# -*- coding: UTF-8 -*-
 
 '''
 Try to sign in automatically on workdays. We decide if a day is a working
 day from holiday information provided by fangjia.911cha.com.
 If you do extra work on non workdays, please sing in manually.
 '''
+from __future__ import print_function
 import sys
 import os
 import re
@@ -19,6 +19,17 @@ import bs4
 import optparse
 import time
 import datetime
+import logging
+
+
+logger = logging.getLogger('auto-sign')
+
+
+def print_wrapper(*args, **kwargs):
+    if sys.platform == 'win32':
+        logger.debug(*args, **kwargs)
+    else:
+        print(*args, **kwargs)
 
 
 def extract_form(response):
@@ -38,15 +49,24 @@ class OASession(requests.Session):
     user_agent = 'Mozilla/5.0 (X11; Linux x86_64; rv:38.0) Gecko/20100101 Firefox/38.0'
     oa_url = 'http://web.oa.wanmei.com/'
 
-    def __init__(self, interactive = False):
+    def __init__(self, **kwargs):
+        '''
+        kwargs:
+            interactive - whether we will print the prompt, default True
+            user - the OA user name
+            passwd - the passwd of the user
+        '''
         super(OASession, self).__init__()
+        interactive = kwargs.get('interactive', False)
         if not self.check_cookie():
+            self.user = kwargs.get('user', None)
+            self.passwd = kwargs.get('passwd', None)
             if interactive:
                 self.user = raw_input('Enter username: ')
                 self.passwd = getpass.getpass('Enter password: ')
-            else:
-                self.user = 'mengfanke'
-                self.passwd = 'wanmei'
+            elif not all((self.user, self.passwd)):
+                raise RuntimeError('user name or password is missing')
+
             self.login()
 
     def post(self, url, content, **headers):
@@ -92,6 +112,7 @@ class OASession(requests.Session):
             pass
         return False
 
+
     def login(self):
         self.cookies['SignonDefault'] = self.user
         self.cookies['SM_USER'] = self.user
@@ -121,12 +142,13 @@ class OASession(requests.Session):
 
         self.cookies.clear(domain = 'sso.oa.wanmei.com')
 
+
 class Employee(object):
     sign_url = 'http://web.oa.wanmei.com/OaHomePage/Handler/signInOut.ashx'
     min_working_hours = 8
 
-    def __init__(self, interactive = False):
-        self.session = OASession(interactive)
+    def __init__(self, **kwargs):
+        self.session = OASession(**kwargs)
 
     def save(self):
         self.session.save_cookie()
@@ -140,7 +162,7 @@ class Employee(object):
 
     def work_time(self):
         resp = self.session.post(Employee.sign_url, 'method=DoSignOutCheck')
-        print(resp.text)
+        print_wrapper('sign out check result: {}'.format(resp.text))
         workTime = re.search(r"'workTime':'([\d:]+)'", resp.text).group(1)
         return map(int, workTime.split(':'))
 
@@ -148,6 +170,7 @@ class Employee(object):
         hour, minute = self.work_time()
         if hour < Employee.min_working_hours:
             if not interactive:
+                print_wrapper('working time is less than {} hours'.format(Employee.min_working_hours))
                 return
             confirm = raw_input('Your working time is less than {} hours({} hours '
                                 'and {} minutes). Are your sure to sign out?[y/n]'.format(
@@ -155,52 +178,80 @@ class Employee(object):
             if confirm[0] != 'y':
                 return
         resp = self.session.post(Employee.sign_url, 'method=DoSignOut')
-        print(resp.text)
+        print_wrapper('sign out result: {}'.format(resp.text))
         result = re.search(r"result:'([\w]+)'", resp.text).group(1)
         action = re.search(r"actionType:'([\w]+)'", resp.text).group(1)
         if result == 'true' and action == 'signOutSuccess':
-            print('sign out successfully')
+            print_wrapper('sign out successfully')
 
 
     def sign_in(self):
         if self.check_sign_info():
-            print('already signed in')
+            print_wrapper('already signed in')
             return
         resp = self.session.post(Employee.sign_url, 'method=DoSignIn')
-        print(resp.text)
+        print_wrapper('sign in result: {}'.format(resp.text))
         result = re.search(r"result:'([\w]+)'", resp.text).group(1)
         action = re.search(r"actionType:'([\w]+)'", resp.text).group(1)
 
         return result == 'true' and action == 'signInSuccess'
 
 
-def is_workday(year, month, day):
-    error = False
-
+def get_holidays_from_internet(year):
     try:
         response = requests.get('http://fangjia.911cha.com/{}.html'.format(year))
     except:
-        error = True
+        return None
 
-    the_day = '{}年{}月{}日'.format(year, month, day)
-
-    if error or response.status_code != requests.codes.ok:
-        # if we cannot get the information, we could only decide whether this
-        # day is a workday by its weekday.
-        date = datetime.datetime(year, month, day)
-        if date.weekday in (5, 6):
-            print('{} is not a working day'.format(the_day))
-            return False
-        return True
+    if response.status_code != requests.codes.ok:
+        return None
 
     bsoup = bs4.BeautifulSoup(response.text)
     non_workdays = bsoup.find_all('td', class_ = 'green zhoumo')
     non_workdays += bsoup.find_all('td', class_ = 'jiari')
+    pattern = re.compile('\d+年\d+月\d+日')
+    holidays = set()
     for tag in non_workdays:
-        if tag['title'].encode('utf-8').find(the_day) > 0:
-            print('{} is not a working day'.format(the_day))
-            return False
-    return True
+        m = pattern.search(tag['title'].encode('utf-8'))
+        if m:
+            holidays.add(m.group(0))
+
+    return holidays
+
+
+def get_holidays(year):
+    '''
+    Get holidays from local file to speed up the procedure. Though we use the
+    name holidays, we include weekends too...
+    '''
+    file_name = 'holidays_{}'.format(year)
+    if os.path.exists(file_name):
+        with open(file_name, 'rb') as infile:
+            info = pickle.load(infile)
+            if info['year'] == year:
+                return info['holidays']
+
+    holidays = get_holidays_from_internet(year)
+    if not holidays:
+        return None
+
+    with open(file_name, 'wb') as outfile:
+        pickle.dump({'year' : year, 'holidays' : holidays}, outfile)
+
+    return holidays
+
+
+def is_workday(year, month, day):
+    the_day = '{}年{}月{}日'.format(year, month, day)
+    holidays = get_holidays(year)
+    if holidays:
+        return the_day not in holidays
+
+    # if we cannot get the information, we could only decide whether this
+    # day is a workday by its weekday.
+    date = datetime.datetime(year, month, day)
+
+    return date.weekday not in (5, 6)
 
 
 def is_today_workday():
@@ -209,22 +260,44 @@ def is_today_workday():
 
 
 if __name__ == '__main__':
+    try:
+        app_dir = os.path.dirname(os.path.abspath(__file__))
+    except NameError:
+        app_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+
+    os.chdir(app_dir)
+
+    if sys.platform == 'win32':
+        logger.setLevel(logging.DEBUG)
+        formater = logging.Formatter('%(asctime)s %(name)s %(levelname)s - %(message)s')
+        fh = logging.FileHandler('auto-sign.log')
+        fh.setFormatter(formater)
+        fh.setLevel(logging.DEBUG)
+        logger.addHandler(fh)
+
     if not is_today_workday():
+        print_wrapper('today is not a workday')
         sys.exit(0)
 
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
     optp = optparse.OptionParser('usage: %prog [options] action')
-    optp.add_option('-q', '--quiet', help = 'non-interactive mode',
-                    action = 'store_false', dest = 'interactive', default = True)
+    optp.add_option('-i', '--interactive', help = 'interactive mode',
+                    action = 'store_true', dest = 'interactive', default = False)
+
+    optp.add_option('-u', '--user', help = 'the OA user name', dest = 'user')
+
+    optp.add_option('-p', '--passwd', help = 'the password', dest = 'passwd')
+
     opts, args = optp.parse_args()
 
-    account = Employee(opts.interactive)
+    account = Employee(interactive = opts.interactive,
+                       user = opts.user, passwd = opts.passwd)
 
     if len(args) < 1:
-        if not account.check_sign_info():
-            while not account.sign_in():
-                time.sleep(5)
+        now = datetime.datetime.now()
+        if now.hour < 10 or (now.hour == 10 and now.minute <= 30):
+            if not account.check_sign_info():
+                while not account.sign_in():
+                    time.sleep(5)
         else:
             account.sign_out(opts.interactive)
     else:
