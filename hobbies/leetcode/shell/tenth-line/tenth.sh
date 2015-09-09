@@ -14,3 +14,5 @@ done < file.txt
 head -n 10 file.txt | tail -n 1
 
 sed -n '10p' file.txt
+
+grep -n ".*" file.txt | grep "^10:" | cut -d: -f2-
