@@ -10,10 +10,11 @@ def contact(request):
         form = ContactForm(request.POST)
         if form.is_valid():
             cd = form.cleaned_data
+            default_from = '287819708@qq.com'
             send_mail(
                 cd['subject'],
                 cd['message'],
-                cd.get('email', '287819708@qq.com'),
+                cd.get('email', default_from) or default_from,
                 ['fancmong@mail.ustc.edu.cn'],
                 fail_silently = False
             )

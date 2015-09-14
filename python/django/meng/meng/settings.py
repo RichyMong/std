@@ -79,7 +79,7 @@ WSGI_APPLICATION = 'meng.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE'   : 'django.db.backends.mysql',
-        'NAME'     : 'web',
+        'NAME'     : 'django',
         'USER'     : 'django',
         'PASSWORD' : 'django',
     }
@@ -108,5 +108,5 @@ STATIC_URL = '/static/'
 EMAIL_USE_TLS = True
 EMAIL_HOST = "smtp.qq.com"
 EMAIL_PORT = 587
-EMAIL_HOST_USER = "287819708"
-EMAIL_HOST_PASSWORD = "wanmei123"
+EMAIL_HOST_USER = "287819708@qq.com"
+EMAIL_HOST_PASSWORD = "ouyangling"
