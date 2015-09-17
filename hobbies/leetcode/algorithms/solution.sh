@@ -5,8 +5,11 @@ if [ $# -lt 1 ]; then
     exit 1
 fi
 
-cat > Solution_$1.cpp <<- FILE_CONTENT
+file_name=solution_$1.cpp
+cat > $file_name  <<- FILE_CONTENT
 #include <iostream>
+
+using namespace std;
 
 class Solution {
 public:
@@ -16,5 +19,6 @@ public:
 int main()
 {
 }
-
 FILE_CONTENT
+
+vim $file_name
