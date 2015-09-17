@@ -4,7 +4,7 @@
 #include <iostream>
 
 template <class Iterator>
-void pretty_output(Iterator start, Iterator end)
+inline void pretty_print(Iterator start, Iterator end)
 {
     std::cout << '[';
     while (start != end) {
@@ -13,6 +13,12 @@ void pretty_output(Iterator start, Iterator end)
             std::cout << ", ";
     }
     std::cout << ']' << std::endl;
+}
+
+template <class Container>
+inline void pretty_print(const Container& c)
+{
+    pretty_print(std::begin(c), std::end(c));
 }
 
 #endif
