@@ -30,11 +30,11 @@ int main()
     vector<int> v3 { 1, 1, 1, 1, 1 };
 
     cout << Solution::removeElement(v1, 6) << endl;
-    pretty_output(v1.begin(), v1.end());
+    pretty_print(v1.begin(), v1.end());
     cout << Solution::removeElement(v2, 1) << endl;
-    pretty_output(v2.begin(), v2.end());
+    pretty_print(v2.begin(), v2.end());
     cout << Solution::removeElement(v3, 1) << endl;
-    pretty_output(v3.begin(), v3.end());
+    pretty_print(v3.begin(), v3.end());
 
     return 0;
 }

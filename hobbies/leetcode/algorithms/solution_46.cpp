@@ -32,6 +32,6 @@ int main()
     std::vector<int> nums { 1, 2, 3 };
     auto ret = Solution::permute(nums);
     for (auto& x : ret) {
-        pretty_output(x.begin(), x.end());
+        pretty_print(x.begin(), x.end());
     }
 }
