@@ -82,10 +82,19 @@ public:
         auto sign = 1;
         auto num = 0;
 
+        bool has_left = false;
+        auto left = 0;
+        auto right = 0;
+
         for (auto c : s) {
             if (isdigit(c)) {
                 num = num * 10 + (c - '0');
             } else {
+                if (has_left) {
+
+                } else {
+
+                }
                 result += sign * num;
                 num = 0;
                 if (c == '+') sign = 1;
