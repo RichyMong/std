@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: UTF-8 -*-
 
 '''
@@ -11,7 +11,6 @@ import sys
 import os
 import re
 import urllib
-import urlparse
 import pickle
 import getpass
 import requests
@@ -21,9 +20,12 @@ import time
 import datetime
 import logging
 
+if sys.version_info[0] == '3':
+    from urllib import urlparse
+else:
+    import urlparse
 
 logger = logging.getLogger('auto-sign')
-
 
 def print_wrapper(*args, **kwargs):
     if sys.platform == 'win32':
@@ -267,13 +269,12 @@ if __name__ == '__main__':
 
     os.chdir(app_dir)
 
-    if sys.platform == 'win32':
-        logger.setLevel(logging.DEBUG)
-        formater = logging.Formatter('%(asctime)s %(name)s %(levelname)s - %(message)s')
-        fh = logging.FileHandler('auto-sign.log')
-        fh.setFormatter(formater)
-        fh.setLevel(logging.DEBUG)
-        logger.addHandler(fh)
+    logger.setLevel(logging.DEBUG)
+    formater = logging.Formatter('%(asctime)s %(name)s %(levelname)s - %(message)s')
+    fh = logging.FileHandler('auto-sign.log')
+    fh.setFormatter(formater)
+    fh.setLevel(logging.DEBUG)
+    logger.addHandler(fh)
 
     if not is_today_workday():
         print_wrapper('today is not a workday')
