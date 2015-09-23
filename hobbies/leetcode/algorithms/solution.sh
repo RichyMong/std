@@ -8,6 +8,7 @@ fi
 file_name=solution_$1.cpp
 cat > $file_name  <<- FILE_CONTENT
 #include <iostream>
+#include "solution.h"
 
 using namespace std;
 

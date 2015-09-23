@@ -14,10 +14,9 @@ public:
 
         for (int i = 0; i != nums.size(); ++i) {
             if (i > k) us.erase(nums[i - k - 1]);
-            for (auto e = us.begin(); e != us.end(); ++e) {
-                if (abs(*e - nums[i]) <= t)
-                    return true;
-            }
+            auto e = us.lower_bound(nums[i] - t);
+            if (e != us.end() && *e - nums[i] <= t)
+                return true;
             us.insert(nums[i]);
         }
 
@@ -29,6 +28,7 @@ int main()
 {
     cout << Solution::containsNearbyAlmostDuplicate({1, 2, 3, 2}, 3, 0) << endl;
     cout << Solution::containsNearbyAlmostDuplicate({1, 2, 3, 2}, 4, 0) << endl;
-    cout << Solution::containsNearbyAlmostDuplicate({1, 2, 3, 2}, 2, 0) << endl;
+    cout << Solution::containsNearbyAlmostDuplicate({1, 2, 3, 4}, 2, 0) << endl;
     cout << Solution::containsNearbyAlmostDuplicate({1, 2, 3, 2}, 1, 2) << endl;
+    cout << Solution::containsNearbyAlmostDuplicate({1, 3, 6, 2}, 1, 2) << endl;
 }
