@@ -26,7 +26,7 @@ public class MaxSquare {
 
         int[][] result = new int[row][col];
 
-        System.arraycopy(numbers[0], 0, result[0], 0, row);
+        System.arraycopy(numbers[0], 0, result[0], 0, col);
 
         for (int j = 0; j < col; ++j) {
             result[0][j] = numbers[0][j];
