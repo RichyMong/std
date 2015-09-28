@@ -13,6 +13,13 @@ struct ListNode {
     ListNode(int x) : val(x), next(NULL) {}
 };
 
+struct TreeNode {
+    int val;
+    TreeNode *left;
+    TreeNode *right;
+    TreeNode(int x) : val(x), left(NULL), right(NULL) {}
+};
+
 template <class Iterator>
 inline void pretty_print(Iterator start, Iterator end)
 {
@@ -37,6 +44,14 @@ inline void print_list(ListNode* head)
         std::cout << (node == head ? "" : "->") << node->val;
     }
     std::cout << "\n";
+}
+
+inline void print_tree(TreeNode* root) {
+    if (!root) return;
+
+    std::cout << root->val << std::endl;
+    print_tree(root->left);
+    print_tree(root->right);
 }
 
 ListNode* create_list(const std::initializer_list<int>& nums)
