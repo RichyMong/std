@@ -45,7 +45,7 @@ if len(sys.argv) < 2:
     print('usage: {} <problem-number>'.format(sys.argv[0]))
     sys.exit(1)
 
-file_content = string.Template('''// ${title} - ${content}.
+file_content = string.Template(u'''// ${title} - ${content}
 // ${url}
 #include <iostream>
 #include "solution.h"
@@ -84,7 +84,7 @@ with open('problems.txt', 'r+') as f:
 
             with open(cpp_file, 'w') as cpp_f:
                 cpp_f.write(file_content.substitute(title = problem.title,
-                            content = problem.content, url = problem.url))
+                            content = problem.content.encode('ascii', 'ignore'), url = problem.url))
 
         f.seek(0)
         sorted_sno = sorted(existed_problems.keys(), key = lambda x : int(x))

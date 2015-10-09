@@ -8,27 +8,28 @@ using namespace std;
 class Solution {
 public:
     static ListNode* insertionSortList2(ListNode* head) {
-        ListNode** prev = &head;
+        if (head == NULL) return NULL;
+
+        ListNode* prev = head;
         ListNode* node = head->next;
 
         while (node) {
             ListNode** cprev = &head;
-            ListNode* cur = head;
-            while (cur->val < node->val) {
-                cprev = &cur;
-                cur = cur->next;
+            ListNode* pos = head;
+            while (pos->val < node->val) {
+                cprev = &pos->next;
+                pos = pos->next;
             }
 
             auto next = node->next;
-            if (cur == node) {
-                prev = &node->next;
+            if (pos == node) {
+                prev = node;
             } else {
-                *prev = node->next;
                 *cprev = node;
-                node->next = cur;
+                prev->next = node->next;
+                node->next = pos;
             }
             node = next;
-            print_list(head);
         }
 
         return head;
@@ -80,11 +81,11 @@ int main()
     cout << "-----" << endl;
     print_list(Solution::insertionSortList2(create_list({1, 2})));
     cout << "-----" << endl;
-    print_list(Solution::insertionSortList(create_list({2, 1})));
+    print_list(Solution::insertionSortList2(create_list({2, 1})));
     cout << "-----" << endl;
-    print_list(Solution::insertionSortList(create_list({2, 3, 4})));
+    print_list(Solution::insertionSortList2(create_list({2, 3, 4})));
     cout << "-----" << endl;
-    print_list(Solution::insertionSortList(create_list({3, 2, 6, 4, 1})));
+    print_list(Solution::insertionSortList2(create_list({3, 2, 6, 4, 1})));
     cout << "-----" << endl;
-    print_list(Solution::insertionSortList(create_list({3})));
+    print_list(Solution::insertionSortList2(create_list({3})));
 }
