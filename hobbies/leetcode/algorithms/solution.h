@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <unordered_set>
 
 struct ListNode {
     int val;

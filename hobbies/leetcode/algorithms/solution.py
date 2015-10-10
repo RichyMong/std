@@ -45,7 +45,7 @@ if len(sys.argv) < 2:
     print('usage: {} <problem-number>'.format(sys.argv[0]))
     sys.exit(1)
 
-file_content = string.Template(u'''// ${title} - ${content}
+fc_template = string.Template(u'''// ${title} ${content}
 // ${url}
 #include <iostream>
 #include "solution.h"
@@ -83,13 +83,16 @@ with open('problems.txt', 'r+') as f:
             existed_problems[sno] = problem.title
 
             with open(cpp_file, 'w') as cpp_f:
-                cpp_f.write(file_content.substitute(title = problem.title,
-                            content = problem.content.encode('ascii', 'ignore'), url = problem.url))
+                file_content = fc_template.substitute(title = problem.title,
+                        content = problem.content.encode('ascii',
+                            'ignore').replace('\n\n', '\n').replace('\n', '\n// '),
+                        url = problem.url).replace('\r', '')
+                cpp_f.write(file_content)
 
         f.seek(0)
         sorted_sno = sorted(existed_problems.keys(), key = lambda x : int(x))
         for k in sorted_sno:
-            f.write('{:{}} {}\n'.format(k, len(str(sorted_sno[-1])),
+            f.write('{:<{}} {}\n'.format(k, len(str(sorted_sno[-1])),
                 existed_problems[k].strip()))
 
     os.system('vim {}'.format(cpp_file))
