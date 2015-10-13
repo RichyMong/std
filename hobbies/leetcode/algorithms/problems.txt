@@ -13,24 +13,32 @@
 26  Remove Duplicates from Sorted Array
 27  Remove Element
 28  Implement strStr()
+31  Next Permutation
+33  Search in Rotated Sorted Array
 34  Search for a Range
 46  Permutations
 58  Length of Last Word
 66  Plus One
 67  Add Binary
+80  Remove Duplicates from Sorted Array II
+82  Remove Duplicates from Sorted List II
 83  Remove Duplicates from Sorted List
 88  Merge Sorted Array
 110 Balanced Binary Tree
 111 Minimum Depth of Binary Tree
 125 Valid Palindrome
+127 Word Ladder
+136 Single Number
 139 Word Break
 141 Linked List Cycle
 142 Linked List Cycle II
+143 Reorder List
 147 Insertion Sort List
 148 Sort List
 151 Reverse Words in a String
 155 Min Stack
 160 Intersection of Two Linked Lists
+162 Find Peak Element
 165 Compare Version Numbers
 168 Excel Sheet Column Title
 169 Majority Element
