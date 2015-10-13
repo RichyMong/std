@@ -4,6 +4,7 @@
 7   Reverse Integer
 8   String to Integer (atoi)
 9   Palindrome Number
+10  Regular Expression Matching
 14  Longest Common Prefix
 15  3Sum
 18  4Sum
