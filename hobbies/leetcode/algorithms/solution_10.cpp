@@ -57,7 +57,7 @@ public:
         auto i = 0, j = 0;
 
         while (i < p.size()) {
-            if (i < p.size() - 1 && p[i + 1] == '*'){
+            if (p[i + 1] == '*'){
                 do {
                     if (isMatch(s.substr(j), p.substr(i + 2))) {
                         return true;
