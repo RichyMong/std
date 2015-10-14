@@ -45,9 +45,8 @@ if len(sys.argv) < 2:
     print('usage: {} <problem-number>'.format(sys.argv[0]))
     sys.exit(1)
 
-fc_template = string.Template(u'''// ${title} ${content}
+fc_template = string.Template(u'''${title_content}
 // ${url}
-#include <iostream>
 #include "solution.h"
 
 using namespace std;
@@ -63,6 +62,42 @@ int main()
     Solution::
 }
 ''')
+
+def make_title_content(title, content):
+    max_len = 80 - len('// ')
+
+    result = ''
+
+    s = '{} - {}'.format(title, content)
+
+    while len(s) > max_len:
+        end = max_len - 1
+
+        lspace = end
+        left = end - 3
+        while lspace >= left and s[lspace].isalnum():
+            lspace -= 1
+
+        rspace = max_len + 3
+        while rspace > end and s[rspace].isalnum():
+            rspace -= 1
+
+        result += '// '
+        if lspace >= left or rspace > end:
+            space = lspace if lspace >= left else rspace
+            result += s[0:space]
+            s = s[space + 1:]
+        else:
+            result += s[0:max_len - 1] + '-'
+            s = s[max_len-1:]
+
+        result += '\n'
+
+    if len(s):
+        result += '// ' + s
+
+    print(result)
+    return result
 
 with open('problems.txt', 'r+') as f:
     existed_problems = {}
@@ -83,10 +118,10 @@ with open('problems.txt', 'r+') as f:
             existed_problems[sno] = problem.title
 
             with open(cpp_file, 'w') as cpp_f:
-                file_content = fc_template.substitute(title = problem.title,
-                        content = problem.content.encode('ascii',
-                            'ignore').replace('\n\n', '\n').replace('\n', '\n// '),
-                        url = problem.url).replace('\r', '')
+                title_content = make_title_content(problem.title, problem.content.encode('ascii',
+                            'ignore').replace('\n\n', '\n').replace('\n', '\n// '))
+                file_content = fc_template.substitute(title_content = title_content,
+                            url = problem.url).replace('\r', '')
                 cpp_f.write(file_content)
 
         f.seek(0)
