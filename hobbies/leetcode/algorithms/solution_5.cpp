@@ -71,15 +71,60 @@ public:
 
         return s.substr(max_i + 1 - records[max_i][max_j], records[max_i][max_j]);
     }
+
+    static string longestPalindrome3(const string& s) {
+        string extended(2 * s.size() + 1, '#');
+
+        for (int i = 0; i < s.size(); ++i) {
+            extended[2 * i + 1] = s[i];
+        }
+
+        vector<int> records(extended.size());
+
+        auto c = 0, r = 0, max_pos = 0;
+
+        for (auto i = 1; i < extended.size(); ++i) {
+            if (r > i) {
+                records[i] = min(records[2 * c - i], r - i);
+            } else {
+                records[i] = 0;
+            }
+
+            for (auto j = records[i] + 1;
+                     i - j >=0 &&
+                     i + j < extended.size() &&
+                     extended[i - j] == extended[i + j];
+                    ++j)
+                ++records[i];
+
+            if (records[i] + i > r) {
+                r = records[i] + i;
+                c = i;
+            }
+
+            if (records[i] > records[max_pos]) {
+                max_pos = i;
+            }
+        }
+
+        string result;
+
+        copy_if(extended.begin() + max_pos - records[max_pos],
+                extended.begin() + max_pos + records[max_pos],
+                back_inserter(result),
+                [](char c) { return c != '#'; });
+
+        return result;
+    }
 };
 
 int main()
 {
-    cout << Solution::longestPalindrome("abcba") << endl;
-    cout << Solution::longestPalindrome("abbda") << endl;
-    cout << Solution::longestPalindrome("abbada") << endl;
-    cout << Solution::longestPalindrome("abaa") << endl;
-    cout << Solution::longestPalindrome("aaaaaaaaa") << endl;
-    cout << Solution::longestPalindrome("a") << endl;
-    cout << Solution::longestPalindrome("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz") << endl;
+    cout << Solution::longestPalindrome3("abcba") << endl;
+    cout << Solution::longestPalindrome3("abbda") << endl;
+    cout << Solution::longestPalindrome3("abbada") << endl;
+    cout << Solution::longestPalindrome3("abaa") << endl;
+    cout << Solution::longestPalindrome3("aaaaaaaaa") << endl;
+    cout << Solution::longestPalindrome3("a") << endl;
+    cout << Solution::longestPalindrome3("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz") << endl;
 }
