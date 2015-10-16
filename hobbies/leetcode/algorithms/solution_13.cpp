@@ -42,5 +42,4 @@ int main()
     cout << Solution::romanToInt("MCMLIV") << endl;
     cout << Solution::romanToInt("MCMXC") << endl;
     cout << Solution::romanToInt("MMXIV") << endl;
-    cout << Solution::romanToInt("MMXIV") << endl;
 }
