@@ -19,6 +19,8 @@ import optparse
 import time
 import datetime
 import logging
+import json
+
 
 if sys.version_info[0] == '3':
     from urllib import urlparse
@@ -28,10 +30,11 @@ else:
 logger = logging.getLogger('auto-sign')
 
 def print_wrapper(*args, **kwargs):
-    if sys.platform == 'win32':
-        logger.debug(*args, **kwargs)
-    else:
-        print(*args, **kwargs)
+    logger.debug(*args, **kwargs)
+    # if sys.platform == 'win32':
+    #     logger.debug(*args, **kwargs)
+    # else:
+    #     print(*args, **kwargs)
 
 
 def extract_form(response):
@@ -59,10 +62,10 @@ class OASession(requests.Session):
             passwd - the passwd of the user
         '''
         super(OASession, self).__init__()
+        self.user = kwargs.get('user', None)
+        self.passwd = kwargs.get('passwd', None)
         interactive = kwargs.get('interactive', False)
         if not self.check_cookie():
-            self.user = kwargs.get('user', None)
-            self.passwd = kwargs.get('passwd', None)
             if interactive:
                 self.user = raw_input('Enter username: ')
                 self.passwd = getpass.getpass('Enter password: ')
@@ -173,6 +176,8 @@ class Employee(object):
         if hour < Employee.min_working_hours:
             if not interactive:
                 print_wrapper('working time is less than {} hours'.format(Employee.min_working_hours))
+                self.notify_user('工作时间不足{}小时({}:{}), 请手动签退!'.format(Employee.min_working_hours,
+                                 hour, minute))
                 return
             confirm = raw_input('Your working time is less than {} hours({} hours '
                                 'and {} minutes). Are your sure to sign out?[y/n]'.format(
@@ -185,6 +190,10 @@ class Employee(object):
         action = re.search(r"actionType:'([\w]+)'", resp.text).group(1)
         if result == 'true' and action == 'signOutSuccess':
             print_wrapper('sign out successfully')
+            self.notify_user('签退成功!')
+        else:
+            self.notify_user('非常遗憾地通知您, 自动签退失败，请手动签退!')
+
 
 
     def sign_in(self):
@@ -196,7 +205,37 @@ class Employee(object):
         result = re.search(r"result:'([\w]+)'", resp.text).group(1)
         action = re.search(r"actionType:'([\w]+)'", resp.text).group(1)
 
+        if result != 'true':
+            self.notify_user('非常遗憾地通知您, 自动签到失败，请手动签到!')
+
         return result == 'true' and action == 'signInSuccess'
+
+
+    def notify_user(self, message):
+        corpid = 'wxe354c66e0b57abcc'
+        secrect = '3S7JkNqHnxMtOpJbPdzmb2Q2PxOy8fxOvvh1EYy6e-Qey4L3mJ0B8xLm94_LzeGf'
+
+        response = requests.get('https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid={}&corpsecret={}'.format(corpid, secrect))
+        print_wrapper(response.text)
+
+        token = response.json()['access_token']
+
+        data = {
+            'touser': self.session.user,
+            'toparty': '',
+            'totag': '',
+            'msgtype': 'text',
+            'agentid': '0',
+            'text': {
+                    'content': message
+                },
+            'safe':'0'
+        }
+
+        response = requests.post('https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token={}'.format(token),
+                                 data = json.dumps(data, ensure_ascii=False) )
+
+        print_wrapper(response.text)
 
 
 def get_holidays_from_internet(year):
