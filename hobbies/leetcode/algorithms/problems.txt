@@ -2,7 +2,6 @@
 2   Add Two Numbers
 3   Longest Substring Without Repeating Characters
 4   Median of Two Sorted Arrays
-4   Median of Two Sorted Arrays
 5   Longest Palindromic Substring
 6   ZigZag Conversion
 7   Reverse Integer
@@ -27,6 +26,7 @@
 31  Next Permutation
 33  Search in Rotated Sorted Array
 34  Search for a Range
+35  Search Insert Position
 38  Count and Say
 46  Permutations
 58  Length of Last Word
@@ -38,6 +38,9 @@
 88  Merge Sorted Array
 110 Balanced Binary Tree
 111 Minimum Depth of Binary Tree
+112 Path Sum
+113 Path Sum II
+113 Path Sum II
 125 Valid Palindrome
 127 Word Ladder
 136 Single Number

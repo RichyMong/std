@@ -64,6 +64,8 @@ int main()
 ''')
 
 def make_title_content(title, content):
+    import pdb; pdb.set_trace()
+
     max_len = 80 - len('// ')
 
     result = ''
@@ -119,7 +121,7 @@ with open('problems.txt', 'r+') as f:
 
             with open(cpp_file, 'w') as cpp_f:
                 title_content = make_title_content(problem.title, problem.content.encode('ascii',
-                            'ignore').replace('\n\n', '\n').replace('\n', '\n// '))
+                            'ignore').strip('\r\n').replace('\n\n', '\n').replace('\n', '\n// '))
                 file_content = fc_template.substitute(title_content = title_content,
                             url = problem.url).replace('\r', '')
                 cpp_f.write(file_content)
