@@ -64,14 +64,8 @@ public:
         if (root->left == NULL && root->right == NULL)
             return root->val == sum;
 
-        auto remaining = sum - root->val;
-        if (root->left && hasPathSum2(root->left, remaining))
-            return true;
-
-        if (root->right && hasPathSum2(root->right, remaining))
-            return true;
-
-        return false;
+        return hasPathSum2(root->left, sum - root->val) ||
+               hasPathSum2(root->right, sum - root->val);
     }
 };
 
