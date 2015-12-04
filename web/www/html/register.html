@@ -1,0 +1,44 @@
+<html>
+    <title>Register</title>
+    <style type="text/css">
+    .container {
+        width: 500px;
+        clear: both;
+    }
+    .container input {
+        width: 100%;
+        clear: both;
+    }
+    </style>
+
+  <body>
+    <h3>Enter your account information</h3>
+    <div class="container">
+      <form id="register" name="register" action="/register_result.php" onsubmit="return validateInput()" method="post">
+        <label for="username">用户名</label>
+        <input type="text" id="username" name="username"><br />
+        <label for="email">邮箱</label>
+        <input type="text" id="email" name="email"><br />
+        <label for="password">密码</label>
+        <input type="password" id="password" name="password"><br />
+        <label for="confirm_password">请再次输入密码</label>
+        <input type="password" id="confirm_password" name="confirm_password"><br />
+        <input type="submit" value="注册">
+      </form>
+    </div>
+
+    <script type="text/javascript">
+      function validateInput() {
+        var x = document.forms["register"];
+        var pattern = /^[a-z0-9_]{6,}$/i;
+        var username = x["username"].value;
+        alert("invalid username " + pattern.test(username));
+        if (pattern.test(username) == true) {
+          return true;
+        } else {
+          return false;
+        }
+      }
+    </script>
+  </body>
+</html>
