@@ -3,22 +3,27 @@
 #include <pthread.h>
 #include <signal.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdbool.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 static void* signal_thread(void *data);
 static void* worker_thread(void *data);
 
+static bool running = true;
+
 int main()
 {
     sigset_t sigset;
     pthread_t t1, t2;
-    sigemptyset(&sigset);
-    sigaddset(&sigset, SIGINT);
-    sigaddset(&sigset, SIGQUIT);
 
-    pthread_create(&t1, NULL, signal_thread, NULL);
+    sigfillset(&sigset);
+    sigdelset(&sigset, SIGSTOP);
+    sigdelset(&sigset, SIGKILL);
+
     pthread_sigmask(SIG_BLOCK, &sigset, NULL);
+    pthread_create(&t1, NULL, signal_thread, NULL);
     pthread_create(&t2, NULL, worker_thread, NULL);
 
     pthread_join(t2, NULL);
@@ -47,18 +52,23 @@ static void* signal_thread(void *data)
 {
     int signo;
     sigset_t sigset;
+    sigset_t set;
 
     sleep(2);
     check_mask();
+    sigfillset(&sigset);
+    pthread_sigmask(SIG_UNBLOCK, NULL, &set);
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGINT);
     sigaddset(&sigset, SIGQUIT);
+    // sigaddset(&sigset, SIGSTOP);
     signal(SIGINT, sigint);
 
     // though we install a handler for SIGINT, it seems that Linux
     // chooses to invoke sigwait instead of call the handler.
     sigwait(&sigset, &signo);
     printf("signal %s\n", strsignal(signo));
+    running = false;
 
     return NULL;
 }
@@ -66,5 +76,8 @@ static void* signal_thread(void *data)
 static void* worker_thread(void *data)
 {
     check_mask();
-    return NULL;
+    while (running) {
+        sleep(1);
+    }
+    return data;
 }

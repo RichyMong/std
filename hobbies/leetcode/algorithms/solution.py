@@ -64,8 +64,6 @@ int main()
 ''')
 
 def make_title_content(title, content):
-    import pdb; pdb.set_trace()
-
     max_len = 80 - len('// ')
 
     result = ''

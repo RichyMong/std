@@ -1,8 +1,9 @@
 <html>
     <body/>
         <?php
-            echo 'Your username: ' . $_POST['username'] . '</br>';
-            echo 'Your email: ' . $_POST['email'] . '</br>';
+            echo $_SERVER['PHP_SELF'] . '</br>';
+            $user = $_POST['username'];
+            echo "Hi <b>$user</b>, thanks for your register.</br>";
         ?>
     </body>
 </html>

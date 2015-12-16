@@ -32,12 +32,20 @@
         var x = document.forms["register"];
         var pattern = /^[a-z0-9_]{6,}$/i;
         var username = x["username"].value;
-        alert("invalid username " + pattern.test(username));
         if (pattern.test(username) == true) {
           return true;
         } else {
           return false;
         }
+		var p1 = x["password"].value;
+		alert(p1);
+		var p2 = x["confirm_password"].value;
+		alert(p2);
+		if (p1 != p2) {
+		  alert("两次输入密码不一致!");
+		  return false;
+		}
+		return true;
       }
     </script>
   </body>
