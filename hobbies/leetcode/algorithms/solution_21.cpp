@@ -25,6 +25,22 @@ public:
         return dummy.next;
     }
 
+    static ListNode* mergeTwoLists2(ListNode* l1, ListNode* l2) {
+        ListNode dummy { 0 };
+        ListNode* tail = &dummy;
+
+        while (l1 && l2) {
+            ListNode** tmp = l1->val < l2->val ? &l1 : &l2;
+            tail->next = *tmp;
+            *tmp = (*tmp)->next;
+            tail = tail->next;
+        }
+
+        tail->next = l1 ? l1 : l2;
+
+        return dummy.next;
+    }
+
 };
 
 int main()
@@ -33,12 +49,12 @@ int main()
     auto l2 = create_list({3, 4, 5});
     auto l3 = create_list({1, 2, 3});
     auto l4 = create_list({2, 3, 4});
-    auto r = Solution::mergeTwoLists(l1, l2);
+    auto r = Solution::mergeTwoLists2(l1, l2);
     print_list(r);
-    r = Solution::mergeTwoLists(l3, l4);
+    r = Solution::mergeTwoLists2(l3, l4);
     print_list(r);
     auto l5 = create_list({6});
     auto l6 = create_list({5});
-    r = Solution::mergeTwoLists(l5, l6);
+    r = Solution::mergeTwoLists2(l5, l6);
     print_list(r);
 }
