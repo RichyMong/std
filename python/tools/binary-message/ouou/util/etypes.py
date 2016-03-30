@@ -1,4 +1,5 @@
 import struct
+from emoney import util
 
 __all__ = ['Char', 'Byte', 'Short', 'UShort', 'Int', 'UInt', 'Long', 'ULong',
            'Array', 'Vector', 'String']
@@ -152,6 +153,9 @@ def Vector(lcls, ecls):
             for x in self:
                 b += self.elem_cls(x).tobytes()
             return b
+
+        def __repr__(self):
+            return '['  + util.range_str(self) + '] ({})'.format(len(self))
 
     return Wrapped
 

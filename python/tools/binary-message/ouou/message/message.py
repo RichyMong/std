@@ -1,7 +1,7 @@
 import struct
 import zlib
-from ouou.util.const import *
-from ouou.util.etypes import *
+from emoney.util.const import *
+from emoney.util.etypes import *
 
 request_messages = {}
 response_messages = {}
@@ -205,3 +205,4 @@ class Message(BinaryObject):
         r = type(self).__name__
         for (name, _, desc) in self.fields_info:
             r += '\n\t{}: {}'.format(desc, getattr(self, name))
+        return r
