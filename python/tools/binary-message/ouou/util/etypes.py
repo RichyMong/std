@@ -1,6 +1,7 @@
 import struct
 
-__all__ = ['Char', 'Byte', 'Short', 'UShort', 'Int', 'UInt', 'Long', 'ULong', 'Array']
+__all__ = ['Char', 'Byte', 'Short', 'UShort', 'Int', 'UInt', 'Long', 'ULong',
+           'Array', 'Vector', 'String']
 
 def tobytes(obj):
     if isinstance(obj, str):
@@ -10,6 +11,9 @@ def tobytes(obj):
 
 def size(obj):
     '''
+    Though the sizes of most of the types are fixed, we use an instance
+    method so that we provide the same interfaces as the types which
+    are determined by instances, such as String, Vector.
     '''
     return type(obj).type_size
 
@@ -30,7 +34,7 @@ class LegacyTypeMeta(type):
 
 
 class Char(str, metaclass = LegacyTypeMeta):
-    pack_fmt = 'c'
+    pack_fmt = '<c'
 
     def __init__(self, arg):
         if len(arg) > 1:
@@ -38,25 +42,25 @@ class Char(str, metaclass = LegacyTypeMeta):
         super(str, Char).__init__(arg)
 
 class Byte(int, metaclass = LegacyTypeMeta):
-    pack_fmt = 'B'
+    pack_fmt = '<B'
 
 class Short(int, metaclass = LegacyTypeMeta):
-    pack_fmt = 'h'
+    pack_fmt = '<h'
 
 class UShort(int, metaclass = LegacyTypeMeta):
-    pack_fmt = 'H'
+    pack_fmt = '<H'
 
 class Int(int, metaclass = LegacyTypeMeta):
-    pack_fmt = 'i'
+    pack_fmt = '<i'
 
 class UInt(int, metaclass = LegacyTypeMeta):
-    pack_fmt = 'I'
+    pack_fmt = '<I'
 
 class Long(int, metaclass = LegacyTypeMeta):
-    pack_fmt = 'l'
+    pack_fmt = '<l'
 
 class ULong(int, metaclass = LegacyTypeMeta):
-    pack_fmt = 'L'
+    pack_fmt = '<L'
 
 class LargeInt(int):
     def __init__(self, value):
@@ -72,7 +76,54 @@ class LargeInt(int):
     def tobytes(self):
         return Int(self.value).tobytes()
 
-def Array(lcls, ecls):
+
+class String(str):
+    @staticmethod
+    def frombytes(buf, offset = 0):
+        n = Short.frombytes(buf, offset)
+        s = struct.unpack_from('{}s'.format(n), buf, offset + n.size())[0]
+        return String(s.decode())
+
+
+    def size(self):
+        return 2 + len(self)
+
+    def tobytes(self):
+        s = self.encode()
+        b = Short(len(s)).tobytes()
+        return b + struct.pack('{}s'.format(len(s)), s)
+
+
+def Array(ecls, length):
+    class Wrapped(list):
+        elem_cls = ecls
+        array_size = length
+
+        @staticmethod
+        def frombytes(buf, offset = 0):
+            w = Wrapped()
+            for i in range(w.array_size):
+                w.append(w.elem_cls.frombytes(buf, offset))
+                offset += w.elem_cls.type_size
+            return w
+
+        def size(self):
+            return self.elem_cls.type_size * len(self)
+
+
+        def tobytes(self):
+            b = b''
+            for x in self:
+                b += self.elem_cls(x).tobytes()
+            return b
+
+        def __repr__(self):
+            return ''.join(str(x) for x in self)
+
+    return Wrapped
+
+
+def Vector(lcls, ecls):
     class Wrapped(list):
         len_cls = lcls
         elem_cls = ecls
@@ -83,12 +134,17 @@ def Array(lcls, ecls):
             size = w.len_cls.frombytes(buf, offset)
             offset += w.len_cls.type_size
             for i in range(size):
-                w.append(w.elem_cls.frombytes(buf, offset))
-                offset += w.elem_cls.type_size
+                elem = w.elem_cls.frombytes(buf, offset)
+                w.append(elem)
+                offset += elem.size()
             return w
 
+
         def size(self):
-            return self.len_cls.type_size + self.elem_cls.type_size * len(self)
+            if hasattr(self.elem_cls, 'type_size'):
+                return self.len_cls.type_size + self.elem_cls.type_size * len(self)
+            else:
+                return self.len_cls.type_size + sum(x.size() for x in self)
 
 
         def tobytes(self):
@@ -113,7 +169,7 @@ if __name__ == '__main__':
     print(sh, i, c)
     print(sh.size())
 
-    ay = Array(Byte, Int)()
+    ay = Vector(Byte, Int)()
     ay.append(1)
     ay.append(2)
     ay.append(1)
@@ -121,5 +177,9 @@ if __name__ == '__main__':
     print(len(ay), ay)
     b = ay.tobytes()
     print(len(b))
-    ay = Array(Byte, Int).frombytes(b)
+    ay = Vector(Byte, Int).frombytes(b)
     print(len(ay), ay)
+    s = String('hello')
+    b = s.tobytes()
+    print(len(b), b)
+    print(String.frombytes(b))
