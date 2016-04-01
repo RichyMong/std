@@ -63,10 +63,12 @@ class BinaryObject(metaclass = BinaryObjectMeta):
 
 
     def fieldsfrombytes(self, buf, offset = 0):
+        use_size = offset
         for (field, field_type, *_) in self.fields_info:
             value = field_type.frombytes(buf, offset)
             offset += value.size()
             setattr(self, field, value)
+        return offset - use_size
 
 
     @classmethod
@@ -107,8 +109,11 @@ class Header(BinaryObject):
         return self.type_size
 
 
-    def is_pushed_pkg(self):
+    def is_push_pkg(self):
         return self.flag & PKG_FLAG_PUSH == PKG_FLAG_PUSH
+
+    def set_push(self):
+        self.flag |= PKG_FLAG_PUSH
 
     def set_need_compress(self):
         self.flag |= PKG_FLAG_REQ_COMPRESS
@@ -155,6 +160,13 @@ class Message(BinaryObject):
         return self.header.size() + self.header.msg_size
 
 
+    def is_push_pkg(self):
+        return self.header.is_push_pkg()
+
+
+    def is_asked_for_push(self):
+        return (self.msg_id > 5510 and getattr(self, 'push_type', None) == 1)
+
     @staticmethod
     def is_complete(buf):
         if len(buf) >= Header.type_size:
@@ -181,11 +193,14 @@ class Message(BinaryObject):
             return Message(header = header)
 
         if header.is_compressed():
-            buf = zlib.decompress(buf)
+            orig_len = Short.frombytes(buf)
+            cmp_len = Short.frombytes(buf, 2)
+            buf = zlib.decompress(buf[4:])
+            assert len(buf) == orig_len
 
         if c2s:
             return request_messages[header.msg_id]._frombytes(buf, header = header)
-        elif header.is_pushed_pkg():
+        elif header.is_push_pkg():
             return push_messages[header.msg_id]._frombytes(buf, header = header)
         else:
             return response_messages[header.msg_id]._frombytes(buf, header = header)
@@ -196,13 +211,16 @@ class Message(BinaryObject):
         if compress:
             self.header.set_compressed()
             self.header.set_need_compress()
-            body = zlib.compress(body)
+            cbody = zlib.compress(body)
+            body = Short(len(body)).tobytes() + Short(len(cbody)).tobytes() + cbody
         self.header.msg_size = len(body)
         return self.header.tobytes() + body + Char('}').tobytes()
 
 
     def __repr__(self):
         r = type(self).__name__
+        if self.is_push_pkg():
+            r += ' [P]'
         for (name, _, desc) in self.fields_info:
             r += '\n\t{}: {}'.format(desc, getattr(self, name))
         return r

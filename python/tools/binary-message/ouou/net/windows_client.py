@@ -1,7 +1,7 @@
 import asyncio
 import socket
 from . import base_client
-from ouou.message import Header, Message
+from emoney.message import Header, Message
 
 class Client(base_client.BaseClient):
     def __init__(self, loop):
@@ -25,10 +25,9 @@ class Client(base_client.BaseClient):
             r = of.result()
         except Exception as e:
             base_client.LOGGER.error('connection failed {}'.format(e))
-            self.close(passive = True)
+            self._close()
         else:
-            self._state_callback(self, self.CONNECTED, True)
-            self.state = self.CONNECTED
+            self.change_state(self.CONNECTED)
 
 
     def _data_sent(self, of = None):
@@ -42,20 +41,24 @@ class Client(base_client.BaseClient):
         except Exception as e:
             base_client.LOGGER.error('{} data receive exception: {}'.format(
                  self._sock.getsockname(), e))
-            self.close(passive = True)
+            self._close()
             return
 
         if not len(data):
-            self.close(passive = True)
+            self._close()
         elif not self._recv_header:
             assert len(data) == Header.type_size
 
             self._recv_header = Header.frombytes(data, c2s = False)
-            f = self._loop.sock_recv(self._sock, self._recv_header.msg_size)
+            f = self._loop.sock_recv(self._sock, self._recv_header.msg_size + 1)
             f.add_done_callback(self._data_received)
         else:
-            assert len(data) == self._recv_header.msg_size
+            assert len(data) == self._recv_header.msg_size + 1
 
             p = Message.frombytes(data, self._recv_header, c2s = False)
-            self._message_callback(self, p)
+            self.handle_message(p)
             self._recv_header = None
+
+            if self.is_waiting_for_msg():
+                f = self._loop.sock_recv(self._sock, Header.type_size)
+                f.add_done_callback(self._data_received)

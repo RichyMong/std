@@ -1,5 +1,9 @@
-from . import const
-from .functions import *
+from .const import *
 from .etypes import *
+from .functions import *
 
-__all__ = [ 'etypes', 'const', 'functions' ]
+__all__ = (
+           const.__all__ +
+           etypes.__all__ +
+           functions.__all__
+          )

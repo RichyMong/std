@@ -1,7 +1,7 @@
 import socket
 import errno
 from . import base_client
-from ouou.message import Header, Message
+from emoney.message import Header, Message
 
 class Client(base_client.BaseClient):
     def __init__(self, loop):
@@ -23,10 +23,10 @@ class Client(base_client.BaseClient):
         self._sock.sendall(data)
 
 
-    def close(self, passive = False):
+    def _close(self):
         if self.state == self.CONNECTED:
             self._loop.remove_reader(self._sock.fileno())
-        super().close(passive)
+        super()._close()
 
 
     def _data_ready(self):
@@ -35,17 +35,16 @@ class Client(base_client.BaseClient):
         except socket.error as e:
             if e.args[0] not in (errno.EWOULDBLOCK, errno.EAGAIN):
                 raise
-            print('data receive exception', e, self._sock.getsockname())
-            self.close(True)
+            self._close()
         else:
             if not len(data):
-                self.close(True)
+                self._close()
             else:
                 self._buf += data
                 p = Message.allfrombytes(self._buf, c2s = False)
                 if p:
-                    self._message_callback(self, p)
-                    self._buf = self._buf[p.size():]
+                    self.handle_message(p)
+                    self._buf = self._buf[p.size()+1:]
 
 
     def _connection_made(self):
@@ -53,9 +52,8 @@ class Client(base_client.BaseClient):
 
         e = self._sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         if not e:
-            self._state_callback(self, self.CONNECTED, True)
-            self.state = self.CONNECTED
+            self.change_state(self.CONNECTED)
             self._loop.add_reader(self._sock.fileno(), self._data_ready)
         else:
-            print('connection error:', e)
-            self.close(True)
+            base_client.LOGGER.error('connection error: {}'.format(e))
+            self._close()

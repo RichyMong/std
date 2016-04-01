@@ -1,14 +1,12 @@
 from . import message
-from ouou.util import range_str
-from ouou.util.etypes import *
+from emoney.util import *
 
 
 __all__ = [
             'Request_5501', # 'Request_5502', 'Request_5503', 'Request_5504',
             # 'Request_5505', 'Request_5506', 'Request_5507', 'Request_5508',
             # 'Request_5509', 'Request_5510', 'Request_5511',
-            'Request_5512',
-            'Request_5513', 'Request_5514', 'Request_5515', 'Request_5516',
+            'Request_5512', 'Request_5513', 'Request_5514', 'Request_5515', 'Request_5516',
             'Request_5517', 'Request_5518',
            ]
 
@@ -154,7 +152,7 @@ class Request_5517(message.Message, metaclass = RequestMeta):
     msg_id = 5517
 
     fields_info = (
-                      ('pid', UShort, '心跳机制'),
+                      ('pid', UShort, '协议标识'),
                   )
 
 

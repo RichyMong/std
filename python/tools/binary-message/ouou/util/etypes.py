@@ -1,8 +1,8 @@
 import struct
 from emoney import util
 
-__all__ = ['Char', 'Byte', 'Short', 'UShort', 'Int', 'UInt', 'Long', 'ULong',
-           'Array', 'Vector', 'String']
+__all__ = ['Char', 'Byte', 'Short', 'UShort', 'Int', 'UInt', 'LargeInt',
+           'Long', 'ULong', 'Array', 'Vector', 'String']
 
 def tobytes(obj):
     if isinstance(obj, str):
@@ -63,13 +63,26 @@ class Long(int, metaclass = LegacyTypeMeta):
 class ULong(int, metaclass = LegacyTypeMeta):
     pack_fmt = '<L'
 
-class LargeInt(int):
+class LargeInt(int, metaclass = LegacyTypeMeta):
+    pack_fmt = '<i'
+
     def __init__(self, value):
         self.value = value
 
     @staticmethod
     def frombytes(buf, offset = 0):
         value = Int.frombytes(buf, offset)
+        negative = False
+        if value < 0:
+            negative = True
+            value = -value
+        tmp = value >> 29
+        if tmp:
+            value &= 0x1fffffff
+            value <<= tmp * 4
+
+        return LargeInt(value) if not negative else LargeInt(-value)
+
 
     def __len__(self):
         return 4
@@ -80,10 +93,10 @@ class LargeInt(int):
 
 class String(str):
     @staticmethod
-    def frombytes(buf, offset = 0):
+    def frombytes(buf, offset = 0, encoding = 'utf-8'):
         n = Short.frombytes(buf, offset)
         s = struct.unpack_from('{}s'.format(n), buf, offset + n.size())[0]
-        return String(s.decode())
+        return String(s.decode(encoding))
 
 
     def size(self):
