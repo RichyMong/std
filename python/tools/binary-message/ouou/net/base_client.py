@@ -3,7 +3,7 @@ import socket
 import errno
 import logging
 from datetime import datetime
-import emoney.message
+import ouou.message
 
 LOGGER = logging.getLogger("client")
 
@@ -26,7 +26,7 @@ class BaseClient(object):
     CLOSING = 4
 
     HEARTBEAT_PERIOD = 30
-    HeartBeat = emoney.message.Request_5517
+    HeartBeat = ouou.message.Request_5517
 
     current_client_id = 0
 

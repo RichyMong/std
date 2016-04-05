@@ -1,7 +1,7 @@
 import struct
 import zlib
-from emoney.util.const import *
-from emoney.util.etypes import *
+from ouou.util.const import *
+from ouou.util.etypes import *
 
 request_messages = {}
 response_messages = {}

@@ -1,5 +1,5 @@
 import struct
-from emoney import util
+from ouou import util
 
 __all__ = ['Char', 'Byte', 'Short', 'UShort', 'Int', 'UInt', 'LargeInt',
            'Long', 'ULong', 'Array', 'Vector', 'String']

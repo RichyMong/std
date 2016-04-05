@@ -1,6 +1,6 @@
 from . import message
 from . import stream
-from emoney.util import *
+from ouou.util import *
 from collections import OrderedDict
 
 

@@ -1,5 +1,5 @@
 from . import message
-from emoney.util import *
+from ouou.util import *
 
 
 __all__ = [

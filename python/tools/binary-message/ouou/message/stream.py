@@ -1,4 +1,4 @@
-from emoney.util.etypes import *
+from ouou.util.etypes import *
 
 class Reader(object):
     def __init__(self, blob, offset = 0):
