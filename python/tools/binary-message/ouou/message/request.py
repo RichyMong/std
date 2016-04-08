@@ -1,17 +1,18 @@
 from . import message
+from .message import NamedField, UnamedField, UnamedFieldInfo
 from ouou.util import *
 
 
-__all__ = [
-            'Request_5501', # 'Request_5502', 'Request_5503', 'Request_5504',
-            # 'Request_5505', 'Request_5506', 'Request_5507', 'Request_5508',
-            # 'Request_5509', 'Request_5510', 'Request_5511',
-            'Request_5512', 'Request_5513', 'Request_5514', 'Request_5515', 'Request_5516',
+__all__ = [ 'MultipleMessage',
+            'Request_5501', 'Request_5502', 'Request_5503', 'Request_5504',
+            'Request_5505', 'Request_5506', 'Request_5508',
+            'Request_5509', 'Request_5510', 'Request_5511', 'Request_5512',
+            'Request_5513', 'Request_5514', 'Request_5515', 'Request_5516',
             'Request_5517', 'Request_5518',
            ]
 
 
-class RequestMeta(message.BinaryObjectMeta):
+class RequestMeta(message.MessageMeta):
     def __new__(mcs, name, bases, attrs):
         cls = super().__new__(mcs, name, bases, attrs)
 
@@ -23,118 +24,154 @@ class RequestMeta(message.BinaryObjectMeta):
         return cls
 
 
+class MultipleMessage(message.Message, metaclass = RequestMeta):
+    msg_id = PKG_TYPE_MULTI
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.named_fields_info = []
+
+
+    def add_message(self, message):
+        field = 'message_{}'.format(len(self.named_fields_info) + 1)
+        self.named_fields_info.append((field, type(message), field))
+        setattr(self, field, message)
+
+
 class Request_5501(message.Message, metaclass = RequestMeta):
-    msg_id = 5501
+    named_fields_info = (
+        NamedField('stockid', String, '代码唯一标示'),
+        NamedField('extra_data', Byte, '同时请求其他数据'),
+        NamedField('fields', Vector(Byte, Byte), '请求字段'),
+        NamedField('date_time', UInt, '请求开始时间'),
+        NamedField('extra_fields', Vector(Byte, Byte), '请求附加字段')
+    )
 
-    fields_info = (
-                      ('stockid', String),
-                      ('extra_data', Byte),
-                      ('fields', Vector(Byte, Byte))
-                  )
 
-    extra_fields_infog = (
-                           ('start_date_time', UShort),
-                           ('extra_fields', Vector(Byte, Byte))
-                        )
 
-    def tobytes(self):
-        b = super().tobytes()
-        if self.extra_data:
-            b += self.start_date_time.tobytes()
-            b += self.extra_fields.tobytes()
-        return b
+class Request_5502(message.Message, metaclass = RequestMeta):
+    # These information will be used by 5516 too.
+    quotaion_request_fields = (
+        NamedField('sort_field', UShort, '排序字段'),
+        NamedField('sort_method', Byte, '排序方式'),
+        NamedField('start_pos', UShort, '起始位置'),
+        NamedField('req_num', UShort, '请求个数'),
+        NamedField('fields', Vector(Byte, Byte), '请求字段ID'),
+        NamedField('req_type', Byte, '请求类型'),
+        NamedField('content', Vector(UShort, String), '请求数据内容')
+    )
 
-    @classmethod
-    def frombytes(cls, buf, **kwargs):
-        p = super().frombytes(buf, **kwargs)
-        if p.extra_data:
-            offset = p.stockid.size() + p.extra_data.size() + p.fields.size()
-            self.start_date_time = Uint.frombytes(buf, offset)
-            self.extra_fields = Vector(Byte, Byte).frombytes(buf, offset +
-                    self.start_date_time.size())
-        return p
-
+    named_fields_info = (
+        NamedField('pid', Byte, '协议标识'),
+    ) + quotaion_request_fields
 
     def __repr__(self):
-        r = ('5501 - 请求单个股票可变字段' +
-             '\n\t股票代码：{}' +
-             '\n\t同时请求其他数据：{}' +
-             '\n\t请求字段ID({})：{}').format(
-                self.stockid,
-                self.extra_data,
-                len(self.fields), range_str(self.fields)
-            )
-        if self.extra_data:
-            r += ('\n\t同时请求开始时间: {}' +
-                  '\n\t同时请求字段ID({}): {}').format(
-                    self.date_time,
-                    len(self.extra_fields), range_str(self.extra_fields)
-                 )
+        r = super().__repr__()
+        if self.req_type == 4:
+            for (i, s) in enumerate(self.content):
+                v = int(s)
+                r += ' {}|{}'.format(v >> 16, v & 0xff)
+        else:
+            r += ' ' + ' '.join(x for x in self.content)
+
         return r
 
 
-class Request_5512(message.Message, metaclass = RequestMeta):
-    msg_id = 5512
 
-    fields_info = (
-                      ('pid', UShort, '协议标识'),
-                      ('push_type', Byte, '推送类型'),
-                      ('stockid', String, '代码唯一标识'),
-                      ('fields', Vector(Byte, Byte), '请求字段ID')
-                  )
+class Request_5503(message.Message, metaclass = RequestMeta):
+    named_fields_info = (
+        NamedField('stockid', String, '代码唯一标识'),
+        NamedField('data_pos', Int, '数据位置'),
+        NamedField('date_time', UInt, '日期和时间'),
+        NamedField('request_num', UShort, '请求条数'),
+        NamedField('fields', Vector(Byte, Byte), '请求字段ID'),
+    )
+
+
+class Request_5504(message.Message, metaclass = RequestMeta):
+    named_fields_info = (
+          NamedField('market_code', String, '市场代码唯一标示'),
+    )
+
+
+class Request_5505(message.Message, metaclass = RequestMeta):
+    named_fields_info = ()
+
+
+class Request_5506(message.Message, metaclass = RequestMeta):
+    named_fields_info = (
+        NamedField('increment_id', UInt, '增量ID'),
+        NamedField('current_count', UShort, '客户端的现有个数')
+    )
+
+
+class Request_5508(message.Message, metaclass = RequestMeta):
+    pass
+
+
+class Request_5509(message.Message, metaclass = RequestMeta):
+    pass
+
+
+class Request_5510(message.Message, metaclass = RequestMeta):
+    pass
+
+
+class Request_5511(message.Message, metaclass = RequestMeta):
+    named_fields_info = (
+        NamedField('stockid', String, '代码唯一标识'),
+        NamedField('version', Byte, '接口版本'),
+        NamedField('pid', UShort, '协议标识'),
+        NamedField('push_type', Byte, '推送类型'),
+        NamedField('extend_data', UShort, '扩展字段'),
+    )
+
+
+class Request_5512(message.Message, metaclass = RequestMeta):
+    named_fields_info = (
+        NamedField('pid', UShort, '协议标识'),
+        NamedField('push_type', Byte, '推送类型'),
+        NamedField('stockid', String, '代码唯一标识'),
+        NamedField('fields', Vector(Byte, Byte), '请求字段ID'),
+    )
 
 
 class Request_5513(message.Message, metaclass = RequestMeta):
-    msg_id = 5513
-
-    fields_info = (
-                      ('pid', UShort, '协议标识'),
-                      ('push_type', Byte, '推送类型'),
-                      ('stockid', String, '代码唯一标识'),
-                      ('fields', Vector(Byte, Byte), '请求字段ID'),
-                      ('date_time', UInt, '请求开始时间')
-                  )
+    named_fields_info = (
+        NamedField('pid', UShort, '协议标识'),
+        NamedField('push_type', Byte, '推送类型'),
+        NamedField('stockid', String, '代码唯一标识'),
+        NamedField('fields', Vector(Byte, Byte), '请求字段ID'),
+        NamedField('date_time', UInt, '请求开始时间')
+    )
 
 
 class Request_5514(message.Message, metaclass = RequestMeta):
-    msg_id = 5514
-
-    fields_info = (
-                      ('pid', UShort, '协议标识'),
-                      ('push_type', Byte, '推送类型'),
-                      ('stockid', String, '代码唯一标识'),
-                      ('fields', Vector(Byte, Byte), '请求字段ID'),
-                      ('flag', Byte, '请求标识'),
-                      ('value', UInt, '请求最新根数或请求开始时间(HHmmss)'),
-                      ('nr_of_roots', Int, '请求根数')
-                  )
+    named_fields_info = (
+        NamedField('pid', UShort, '协议标识'),
+        NamedField('push_type', Byte, '推送类型'),
+        NamedField('stockid', String, '代码唯一标识'),
+        NamedField('fields', Vector(Byte, Byte), '请求字段ID'),
+        NamedField('flag', Byte, '请求标识'),
+        NamedField('value', UInt, '请求最新根数或请求开始时间(HHmmss)'),
+        NamedField('nr_of_roots', Int, '请求根数')
+    )
 
 
 class Request_5515(message.Message, metaclass = RequestMeta):
-    msg_id = 5515
-
-    fields_info = (
-                      ('pid', UShort, '协议标识'),
-                      ('push_type', Byte, '推送类型'),
-                      ('stockid', String, '代码唯一标识'),
-                      ('number', Byte, '请求经纪队列个数')
-                  )
+    named_fields_info = (
+        NamedField('pid', UShort, '协议标识'),
+        NamedField('push_type', Byte, '推送类型'),
+        NamedField('stockid', String, '代码唯一标识'),
+        NamedField('number', Byte, '请求经纪队列个数')
+    )
 
 
 class Request_5516(message.Message, metaclass = RequestMeta):
-    msg_id = 5516
-
-    fields_info = (
-                      ('pid', UShort, '协议标识'),
-                      ('push_type', Byte, '推送类型'),
-                      ('sort_field', Byte, '排序字段'),
-                      ('sort_method', Byte, '排序方式'),
-                      ('start_pos', UShort, '起始位置'),
-                      ('req_num', UShort, '请求个数'),
-                      ('fields', Vector(Byte, Byte), '请求字段ID'),
-                      ('req_type', Byte, '请求类型'),
-                      ('content', Vector(UShort, String), '请求数据内容')
-                  )
+    named_fields_info = (
+        NamedField('pid', UShort, '协议标识'),
+        NamedField('push_type', Byte, '推送类型'),
+    ) + Request_5502.quotaion_request_fields
 
     def __repr__(self):
         r = super().__repr__()
@@ -149,20 +186,16 @@ class Request_5516(message.Message, metaclass = RequestMeta):
 
 
 class Request_5517(message.Message, metaclass = RequestMeta):
-    msg_id = 5517
-
-    fields_info = (
-                      ('pid', UShort, '协议标识'),
-                  )
+    named_fields_info = (
+        NamedField('pid', UShort, '协议标识'),
+    )
 
 
 class Request_5518(message.Message, metaclass = RequestMeta):
-    msg_id = 5518
-
-    fields_info = (
-                      ('pid', UShort, '协议标识'),
-                      ('md5', Array(Char, 33), 'MD5校验')
-                  )
+    named_fields_info = (
+        NamedField('pid', UShort, '协议标识'),
+        NamedField('md5', Array(Char, 33), 'MD5校验')
+    )
 
 
 def analyze_hex(content):

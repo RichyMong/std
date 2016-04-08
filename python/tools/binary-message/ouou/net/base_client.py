@@ -65,17 +65,29 @@ class BaseClient(object):
         return any((self.is_waiting_for_push(), self.is_waiting_for_response()))
 
 
-    def send_message(self, msg):
+    def _add_waited_message(self, msg):
         self._waited_response.append(msg.header.msg_id)
         if msg.is_asked_for_push():
             self._waited_push.add(msg.header.msg_id)
 
-        self.send_data(msg.tobytes())
+
+    def send_message(self, *msgs):
+        assert len(msgs)
+
+        if len(msgs) > 1:
+            multiple = ouou.message.MultipleMessage()
+            for m in msgs:
+                self._add_waited_message(m)
+                multiple.add_message(m)
+            self.send_data(multiple.tobytes())
+        else:
+            self._add_waited_message(msgs[0])
+            self.send_data(msgs[0].tobytes())
 
 
     def handle_message(self, msg):
         msg_id = msg.header.msg_id
-        if not msg.is_push_pkg():
+        if not msg.is_push_pkg() and msg_id != 5500:
             try:
                 self._waited_response.remove(msg.header.msg_id)
             except ValueError:

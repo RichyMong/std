@@ -2,7 +2,7 @@ import struct
 from ouou import util
 
 __all__ = ['Char', 'Byte', 'Short', 'UShort', 'Int', 'UInt', 'LargeInt',
-           'Long', 'ULong', 'Array', 'Vector', 'String']
+           'Long', 'ULong', 'Array', 'Vector', 'ByteVector', 'String', 'GBKString' ]
 
 def tobytes(obj):
     if isinstance(obj, str):
@@ -20,11 +20,13 @@ def size(obj):
 
 class LegacyTypeMeta(type):
     def __new__(meta, classname, supers, classdict):
-        classdict['tobytes'] = tobytes
-        classdict['size'] = size
-        classdict['type_size'] = struct.calcsize(classdict['pack_fmt'])
+        cls = type.__new__(meta, classname, supers, classdict)
+        cls.tobytes = tobytes
+        cls.type_size = struct.calcsize(cls.pack_fmt)
+        cls.size = size
 
-        return type.__new__(meta, classname, supers, classdict)
+        return cls
+
 
     def frombytes(cls, buf, offset = 0):
         value = struct.unpack_from(cls.pack_fmt, buf, offset)[0]
@@ -91,22 +93,31 @@ class LargeInt(int, metaclass = LegacyTypeMeta):
         return Int(self.value).tobytes()
 
 
-class String(str):
-    @staticmethod
-    def frombytes(buf, offset = 0, encoding = 'utf-8'):
-        n = Short.frombytes(buf, offset)
-        s = struct.unpack_from('{}s'.format(n), buf, offset + n.size())[0]
-        return String(s.decode(encoding))
+def EncodedString(encoding):
+    class WrapperString(str):
+        @staticmethod
+        def frombytes(buf, offset = 0):
+            n = Short.frombytes(buf, offset)
+            s = struct.unpack_from('{}s'.format(n), buf, offset + n.size())[0]
+            return WrapperString(s.decode(encoding = encoding))
 
 
-    def size(self):
-        return 2 + len(self)
+        def size(self):
+            '''
+            Either from or to bytes, the size is decided by encoding. Since we
+            inherit str, we are not able to add a length field to save the size.
+            '''
+            return 2 + len(self.encode(encoding = encoding))
 
-    def tobytes(self):
-        s = self.encode()
-        b = Short(len(s)).tobytes()
-        return b + struct.pack('{}s'.format(len(s)), s)
+        def tobytes(self):
+            s = self.encode(encoding = encoding)
+            b = Short(len(s)).tobytes()
+            return b + struct.pack('{}s'.format(len(s)), s)
 
+    return WrapperString
+
+String = EncodedString('utf-8')
+GBKString = EncodedString('gbk')
 
 def Array(ecls, length):
     class Wrapped(list):
@@ -168,9 +179,11 @@ def Vector(lcls, ecls):
             return b
 
         def __repr__(self):
-            return '['  + util.range_str(self) + '] ({})'.format(len(self))
+            return '['  + util.to_range_str(self) + '] ({})'.format(len(self))
 
     return Wrapped
+
+ByteVector = Vector(Byte, Byte)
 
 if __name__ == '__main__':
     sh = Short(0x1234)

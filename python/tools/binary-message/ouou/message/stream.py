@@ -6,6 +6,10 @@ class Reader(object):
         self._offset = offset
 
 
+    def offset(self):
+        return self._offset
+
+
     def read_bytes(self, size):
         v = self.data[:size]
         self._offset += size
@@ -13,7 +17,7 @@ class Reader(object):
 
     def read_etype(self, cls, **kwargs):
         v = cls.frombytes(self._buf, self._offset, **kwargs)
-        self._offset += v.size()
+        self._offset += v.size(**kwargs)
         return v
 
 
@@ -34,7 +38,7 @@ class Reader(object):
 
 
     def read_int(self):
-        return self.read_etype(UInt)
+        return self.read_etype(Int)
 
 
     def read_uint(self):
@@ -45,8 +49,8 @@ class Reader(object):
         return self.read_etype(LargeInt)
 
 
-    def read_string(self, encoding = 'utf-8'):
-        return self.read_etype(String, encoding = encoding)
+    def read_string(self):
+        return self.read_etype(String)
 
 
     def read_vector(self, cls):

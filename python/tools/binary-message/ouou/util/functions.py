@@ -1,7 +1,7 @@
 import time
 from datetime import datetime
 
-def range_str(iterable):
+def to_range_str(iterable):
     '''
     iteratools.groupby could by used here
     '''
@@ -31,8 +31,18 @@ def range_str(iterable):
     return result
 
 
+def range_str_to_list(s):
+    ret = []
+    for f in s.strip(' ,\n\t').replace(',', ' ').split():
+        r = f.split('-')
+        for i in range(int(r[0]), int(r[-1]) + 1):
+            ret.append(i)
+
+    return ret
+
+
 def get_milliseconds():
-    return time.time() * 1000 + datetime.now().microsecond // 1000
+    return int(time.time()) * 1000 + (datetime.now().microsecond) // 1000
 
 
 def is_trade_time():
