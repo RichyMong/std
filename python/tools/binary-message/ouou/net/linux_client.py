@@ -44,6 +44,7 @@ class Client(base_client.BaseClient):
                 p = Message.allfrombytes(self._buf, c2s = False)
                 if p:
                     self.handle_message(p)
+                    # be careful to skip the trailing '}'
                     self._buf = self._buf[p.size()+1:]
 
 
