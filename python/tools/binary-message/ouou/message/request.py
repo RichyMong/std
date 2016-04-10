@@ -1,5 +1,6 @@
 from . import message
-from .message import NamedField, UnamedField, UnamedFieldInfo
+from .message import NamedField
+from .const import *
 from ouou.util import *
 
 
@@ -40,7 +41,7 @@ class MultipleMessage(message.Message, metaclass = RequestMeta):
 
 class Request_5501(message.Message, metaclass = RequestMeta):
     named_fields_info = (
-        NamedField('stockid', String, '代码唯一标示'),
+        NamedField('stock_id', String, '代码唯一标示'),
         NamedField('extra_data', Byte, '同时请求其他数据'),
         NamedField('fields', Vector(Byte, Byte), '请求字段'),
         NamedField('date_time', UInt, '请求开始时间'),
@@ -80,7 +81,7 @@ class Request_5502(message.Message, metaclass = RequestMeta):
 
 class Request_5503(message.Message, metaclass = RequestMeta):
     named_fields_info = (
-        NamedField('stockid', String, '代码唯一标识'),
+        NamedField('stock_id', String, '代码唯一标识'),
         NamedField('data_pos', Int, '数据位置'),
         NamedField('date_time', UInt, '日期和时间'),
         NamedField('request_num', UShort, '请求条数'),
@@ -119,7 +120,7 @@ class Request_5510(message.Message, metaclass = RequestMeta):
 
 class Request_5511(message.Message, metaclass = RequestMeta):
     named_fields_info = (
-        NamedField('stockid', String, '代码唯一标识'),
+        NamedField('stock_id', String, '代码唯一标识'),
         NamedField('version', Byte, '接口版本'),
         NamedField('pid', UShort, '协议标识'),
         NamedField('push_type', Byte, '推送类型'),
@@ -131,7 +132,7 @@ class Request_5512(message.Message, metaclass = RequestMeta):
     named_fields_info = (
         NamedField('pid', UShort, '协议标识'),
         NamedField('push_type', Byte, '推送类型'),
-        NamedField('stockid', String, '代码唯一标识'),
+        NamedField('stock_id', String, '代码唯一标识'),
         NamedField('fields', Vector(Byte, Byte), '请求字段ID'),
     )
 
@@ -140,7 +141,7 @@ class Request_5513(message.Message, metaclass = RequestMeta):
     named_fields_info = (
         NamedField('pid', UShort, '协议标识'),
         NamedField('push_type', Byte, '推送类型'),
-        NamedField('stockid', String, '代码唯一标识'),
+        NamedField('stock_id', String, '代码唯一标识'),
         NamedField('fields', Vector(Byte, Byte), '请求字段ID'),
         NamedField('date_time', UInt, '请求开始时间')
     )
@@ -150,7 +151,7 @@ class Request_5514(message.Message, metaclass = RequestMeta):
     named_fields_info = (
         NamedField('pid', UShort, '协议标识'),
         NamedField('push_type', Byte, '推送类型'),
-        NamedField('stockid', String, '代码唯一标识'),
+        NamedField('stock_id', String, '代码唯一标识'),
         NamedField('fields', Vector(Byte, Byte), '请求字段ID'),
         NamedField('flag', Byte, '请求标识'),
         NamedField('value', UInt, '请求最新根数或请求开始时间(HHmmss)'),
@@ -162,7 +163,7 @@ class Request_5515(message.Message, metaclass = RequestMeta):
     named_fields_info = (
         NamedField('pid', UShort, '协议标识'),
         NamedField('push_type', Byte, '推送类型'),
-        NamedField('stockid', String, '代码唯一标识'),
+        NamedField('stock_id', String, '代码唯一标识'),
         NamedField('number', Byte, '请求经纪队列个数')
     )
 
