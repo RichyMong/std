@@ -1,6 +1,5 @@
 from ouou.message import *
 from ouou.util import *
-from ouou.message.response import PriceDisplay
 
 def test_5515():
     r = Response_5515()
@@ -49,8 +48,9 @@ def test_5511():
     r = Response_5511()
     r.stock_id = 'HK|00700'
     r.pid = 1
-    r.data.append((1, 'name', PriceDisplay(0x03, 0, '开盘价')))
-    r.data.append((2, 'stock', PriceDisplay(0x04, 0, ['现手', '现手方向'])))
+    import pdb; pdb.set_trace()
+    r.data.append((1, 'name', 0x03, 0, '开盘价'))
+    r.data.append((2, 'stock', 0x04, 0, ['现手', '现手方向']))
     b = r.tobytes()
     t = Message.allfrombytes(b, c2s = False)
     print(t)

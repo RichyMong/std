@@ -449,16 +449,21 @@ class Response_5511(message.Message, metaclass = ResponseMeta):
             Attribute('name', GBKString, '字段数据名称'),
             Attribute('data_type', UShort, '字段类型'),
             Attribute('extend_data', Byte, '扩展字段类型'),
+            # The type of the data is decided by the lowest 3 bits of
+            # data_type. So we can only get it at runtime.
         )
 
-        data_types = [ Int, LargeInt, LargeInt, GBKString, Array(2, GBKString) ]
+        data_types = [ Int, LargeInt, LargeInt, GBKString,
+                       Array(2, GBKString) ]
 
-        def __init__(self, *attrs, **kwargs):
+        def __init__(self, attrs = None, **kwargs):
             super().__init__(**kwargs)
             if attrs:
-                self.data_type = UShort(attrs[0])
-                self.extend_data = Byte(attrs[1])
-                self.data = self.data_types[self.data_type & 0x07](attrs[2])
+                self.index = attrs[0]
+                self.name = attrs[1]
+                self.data_type = attrs[2]
+                self.extend_data = attrs[3]
+                self.data = self.data_types[self.data_type & 0x07](attrs[4])
 
         def __str__(self):
             r = super().__str__()
