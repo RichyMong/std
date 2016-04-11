@@ -3,7 +3,19 @@ from functools import reduce
 from .basetypes import *
 from .functions import *
 
-__all__ = [ 'TypeList', 'Array', 'Vector', 'ByteVector', 'String', 'GBKString' ]
+__all__ = [ 'TypeList', 'Array', 'Vector', 'ByteVector', 'CString', 'String', 'GBKString' ]
+
+def CString(array_size, encoding = 'utf-8'):
+    class Wrapped(str):
+        @classmethod
+        def fromstream(cls, reader):
+            b = reader.read_bytes(array_size)
+            return Wrapped(b.decode(encoding))
+
+        def tobytes(self):
+            return self.encode(encoding)
+
+    return Wrapped
 
 def EncodedString(encoding):
     class WrapperString(str):
@@ -59,8 +71,9 @@ def TypeList(elem_cls):
                 return '[ ' + ' '.join(x for x in self) + '] ({})'.format(len(self))
             else:
                 r = '共 {} 个'.format(len(self))
-                for x in self:
-                    r += '\n\t' + 80 * '-' + '{}'.format(x)
+                sep = 30 * '-'
+                for i, x in enumerate(self):
+                    r += '\n\t' + sep + str(i + 1) + sep + '\n\t{}'.format(x)
                 return r
 
     return WrapperList
@@ -70,6 +83,12 @@ def Array(array_size, elem_cls):
         @classmethod
         def fromstream(cls, reader):
             return cls(reader.read_times(elem_cls, array_size))
+
+        def __repr__(self):
+            if issubclass(elem_cls, str):
+                return ''.join(x for x in self)
+            else:
+                return super().__repr__()
 
     return Wrapped
 

@@ -1,6 +1,6 @@
 import struct
 
-__all__ = ['Char', 'Byte', 'Short', 'UShort', 'Int', 'UInt', 'LargeInt',
+__all__ = ['Char', 'Byte', 'Short', 'UShort', 'Int', 'DigitInt', 'UInt', 'LargeInt',
            'Long', 'ULong' ]
 
 BYTE_ORDER = '<'
@@ -45,11 +45,10 @@ class LegacyTypeMeta(type):
 
 class Char(str, metaclass = LegacyTypeMeta):
     pack_fmt = 'c'
-
-    def __init__(self, arg):
-        if len(arg) > 1:
-            raise ValueError('Char contains more than one character')
-        super(str, Char).__init__(arg)
+    def __init__(self, s = ''):
+        if len(s) > 1:
+            raise ValueError('char value "{}" is longer than 1'.format(s))
+        self = s
 
 class Byte(int, metaclass = LegacyTypeMeta):
     pack_fmt = 'B'
@@ -63,6 +62,13 @@ class UShort(int, metaclass = LegacyTypeMeta):
 class Int(int, metaclass = LegacyTypeMeta):
     pack_fmt = 'i'
 
+def DigitInt(digit_size):
+    class Wrapper(Int):
+        def __str__(self):
+            return '{:.{digits}f}'.format(float(self) / pow(10, digit_size),
+                         digits = digit_size)
+    return Wrapper
+
 class UInt(int, metaclass = LegacyTypeMeta):
     pack_fmt = 'I'
 
@@ -74,9 +80,6 @@ class ULong(int, metaclass = LegacyTypeMeta):
 
 class LargeInt(int, metaclass = LegacyTypeMeta):
     pack_fmt = 'i'
-
-    def __init__(self, value):
-        self.value = value
 
     @staticmethod
     def frombytes(buf, offset = 0):

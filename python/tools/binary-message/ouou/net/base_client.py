@@ -87,6 +87,7 @@ class BaseClient(object):
 
     def handle_message(self, msg):
         msg_id = msg.header.msg_id
+        waiting = msg_id in self._waited_response
         if not msg.is_push_pkg() and msg_id != 5500:
             try:
                 self._waited_response.remove(msg.header.msg_id)
@@ -94,7 +95,7 @@ class BaseClient(object):
                 LOGGER.error('{} received unexpected message {}'.format(self, msg_id))
                 LOGGER.error('{} waiting for {}'.format(self, self._waited_response))
 
-        if msg_id != BaseClient.HeartBeat.msg_id:
+        if msg_id != BaseClient.HeartBeat.msg_id or waiting:
             self._message_callback(self, msg)
         else:
             self._loop.call_later(self.HEARTBEAT_PERIOD, self.keep_alive)

@@ -12,9 +12,14 @@ push_messages = {}
 
 __all__ = [ 'Header', 'Message' ]
 
-NamedField = collections.namedtuple('NamedField', ['name', 'type', 'desc'])
+Attribute = collections.namedtuple('Attribute', ['name', 'type', 'desc'])
 
 class DependentAttribute(object):
+    '''
+    This class of attributes depend on the other attributes in the same target
+    class. As a result, we need the host object when creating an instance of
+    this class from a stream.
+    '''
     def tobytes(self):
         raise NotImplementedError('')
 
@@ -23,6 +28,10 @@ class DependentAttribute(object):
         raise NotImplementedError('')
 
 class DependentFieldsAttribute(DependentAttribute):
+    '''
+    This class of attributes is like DependentAttribute. However, it needs
+    more information. We are not able to write it without the target.
+    '''
     def tobytes(self, target):
         raise NotImplementedError('')
 
@@ -30,33 +39,64 @@ class BinaryObjectMeta(type):
     def __new__(mcs, name, bases, attrs):
         cls = type.__new__(mcs, name, bases, attrs)
 
-        cls._fields = { x[0] : x[1] for x in attrs.get('attributes_info', []) }
+        cls._fields = {}
+
+        for x in attrs.get('attributes_info', []):
+            if x in cls._fields:
+                raise RuntimeError('duplicate attribute {}'.format(x.name))
+            cls._fields[x.name] = x.type
 
         return cls
+
+    def _fromstream(cls, reader, **kwargs):
+        self = cls(**kwargs)
+        for (field, field_type, *_) in self.attributes_info:
+            if issubclass(field_type, DependentAttribute):
+                dattr = field_type.fromstream(reader, self)
+                if dattr:
+                    setattr(self, field, dattr)
+            else:
+                setattr(self, field, reader.read_type(field_type))
+
+        self.extra_parse(reader)
+
+        return self
+
+    def fromstream(cls, reader, **kwargs):
+        return cls._fromstream(reader, **kwargs)
+
+    def frombytes(cls, buf, **kwargs):
+        return cls.fromstream(Reader(buf), **kwargs)
 
 class BinaryObject(metaclass = BinaryObjectMeta):
     '''
     '''
     attributes_info = ()
 
-    def __init__(self, **kwargs):
-        for name in self._fields:
+    def __init__(self, iterable = None, **kwargs):
+        '''
+        The object could be initialized from an iterable object as well as
+        keyword arguments.
+        '''
+        if iterable:
+            for (i, arg) in enumerate(iterable):
+                attr = self.attributes_info[i]
+                setattr(self, attr.name, arg)
+
+        for name, cls in self._fields.items():
             if not hasattr(self, name):
-                setattr(self, name, kwargs.get(name, None))
+                setattr(self, name, kwargs.get(name, cls()))
 
-    def __setattr__(self, name, value):
-        if name in self._fields or name in self._optional_fields:
-            d = self._fields if name in self._fields else self._optional_fields
-            if value is not None and not isinstance(value, d[name]):
-                value = d[name](value)
-        super().__setattr__(name, value)
-
-    def __repr__(self):
+    def __str__(self):
         r = ''
-        display_prefix = '\n\t'
 
-        for (name, _, desc) in self.attributes_info:
-            r += display_prefix + '{}: {}'.format(desc, getattr(self, name))
+        for i, (name, _, desc) in enumerate(self.attributes_info):
+            if i: r += PRINT_PREFIX
+
+            if desc:
+                r += '{}: {}'.format(desc, getattr(self, name))
+            else:
+                r += '{}'.format(getattr(self, name))
 
         if not self.attributes_info:
             return 'Empty ' + r
@@ -65,21 +105,22 @@ class BinaryObject(metaclass = BinaryObjectMeta):
 
     def _tobytes(self):
         b = b''
+        cls_name = type(self).__name__
         for (field, field_type, *_) in self.attributes_info:
             v = getattr(self, field)
             if v is None:
-                raise ValueError('{}.{} is not set'.format(
-                        type(self).__name__, field)
-                      )
-            if isinstance(v, DependentFieldsAttribute):
-                b += v.tobytes(self)
-            else:
-                b += v.tobytes()
+                raise ValueError('{}.{} is not set'.format( cls_name, field))
+            try:
+                if not isinstance(v, field_type):
+                    v = field_type(v)
 
-        name = 'optional_fields'
-        for info in getattr(self, name, []):
-            for v in info:
-                b += v.tobytes()
+                if issubclass(field_type, DependentFieldsAttribute):
+                    b += v.tobytes(self)
+                else:
+                    b += v.tobytes()
+            except Exception as e:
+                raise RuntimeError("attribue '{}' in class {}: {}".format(
+                       field, cls_name, e))
 
         return b
 
@@ -93,26 +134,8 @@ class BinaryObject(metaclass = BinaryObjectMeta):
 
         return total_size
 
-    @classmethod
-    def _fromstream(cls, reader, **kwargs):
-        self = cls(**kwargs)
-        for (field, field_type, *_) in self.attributes_info:
-            if issubclass(field_type, DependentAttribute):
-                dattr = field_type.fromstream(reader, self)
-                if dattr:
-                    setattr(self, field, dattr)
-            else:
-                setattr(self, field, reader.read_type(field_type))
-
-        return self
-
-    @classmethod
-    def fromstream(cls, reader, **kwargs):
-        return cls._fromstream(reader, **kwargs)
-
-    @classmethod
-    def frombytes(cls, buf, **kwargs):
-        return cls.fromstream(Reader(buf), **kwargs)
+    def extra_parse(self, reader):
+        pass
 
 def create_class(name, fields):
     def __init__(self, args = ()):
@@ -126,11 +149,11 @@ def create_class(name, fields):
 
 class Header(BinaryObject):
     attributes_info = (
-        NamedField('prefix', Char, 'prefix'),
-        NamedField('msg_id', UShort, 'msg_id'),
-        NamedField('flag', Byte, 'flag'),
-        NamedField('unused', Byte, 'unused'),
-        NamedField('msg_size', UShort, 'msg_size'),
+        Attribute('prefix', Char, 'prefix'),
+        Attribute('msg_id', UShort, 'msg_id'),
+        Attribute('flag', Byte, 'flag'),
+        Attribute('unused', Byte, 'unused'),
+        Attribute('msg_size', UShort, 'msg_size'),
     )
 
     type_size = sum(x[1].type_size for x in attributes_info)
@@ -138,13 +161,10 @@ class Header(BinaryObject):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.prefix = '{'
-        self.flag = 0
         self.msg_id = kwargs.get('msg_id', 0)
-        self.unused = 0
-        self.msg_size = 0
         self.c2s = kwargs.get('c2s', True)
 
-    def __repr__(self):
+    def __str__(self):
         attr = (self.flag << 8) & self.unused
         return "prefix: '{}', type: {}, attribute: 0x{:x}, size: {}".format(
                     self.prefix, self.msg_id, attr, self.msg_size
@@ -179,6 +199,9 @@ class Message(BinaryObject):
         self.header = kwargs.pop('header', Header(msg_id = self.msg_id))
         super().__init__(**kwargs)
 
+    def empty(self):
+        return not self.header.msg_size
+
     def size(self):
         return self.header.size() + self.header.msg_size
 
@@ -201,8 +224,8 @@ class Message(BinaryObject):
         self.header.msg_size = len(body)
         return self.header.tobytes() + body + Char('}').tobytes()
 
-    def __repr__(self):
-        return type(self).__name__ + super().__repr__()
+    def __str__(self):
+        return type(self).__name__ + PRINT_PREFIX + super().__str__()
 
     @staticmethod
     def fromstream(reader, header, c2s = True):

@@ -95,8 +95,20 @@ msg_5515.number = 40
 msg_5516 = message.Request_5516()
 msg_5516.pid = 1
 msg_5516.push_type = message.PUSH_TYPE_ONCE
-msg_5516.stock_id = 'HK|00700'
-msg_5516.number = 40
+msg_5516.sort_field = 10
+msg_5516.sort_method = message.SORT_ORDER_DESC
+msg_5516.start_pos = 0
+msg_5516.req_num = random.randint(5, 10)
+msg_5516.fields = util.range_str_to_list('3-5,9-13')
+msg_5516.req_type = message.REQ_TYPE_SELF_STOCK
+msg_5516.content = ['HK|00700','HK|00001','NASDAQ|AAPL']
+
+msg_5517 = message.Request_5517()
+msg_5517.pid = 1
+
+msg_5518 = message.Request_5518()
+msg_5518.pid = 1
+msg_5518.md5 = 'aaa'
 
 messages = {
              5501 : msg_5501,
@@ -114,8 +126,8 @@ messages = {
              5514 : msg_5514,
              5515 : msg_5515,
              5516 : msg_5516,
-             # 5517 : msg_5517,
-             # 5518 : msg_5518,
+             5517 : msg_5517,
+             5518 : msg_5518,
            }
 
 CHECK_PERIOD = 2
@@ -139,11 +151,11 @@ class ConcurrentCase(object):
 
     def print_result(self):
         request_cnt = len(self.request_timestamp)
-        for k, v in  self.round_trip:
+        for k, v in  self.round_trip.items():
             if len(v) == request_cnt:
                 if k not in self.completed_messages:
                     logging.info('message {} completed, request {}, response {}'.format(
-                            x, request_cnt, len(v)
+                            k, request_cnt, len(v)
                         )
                     )
 
@@ -156,7 +168,7 @@ class ConcurrentCase(object):
                     )
             else:
                 logging.info('message {}, request count: {}, response count: {}'.format(
-                        x, len(self.request_timestamp), len(v)
+                        k, len(self.request_timestamp), len(v)
                     )
                 )
 
@@ -178,7 +190,7 @@ class ConcurrentCase(object):
 
     def check_response(self):
         if self.request_timestamp and not self.all_response_ok():
-            print_result()
+            self.print_result()
 
         if self.clients:
             self.loop.call_later(CHECK_PERIOD, self.check_response)
@@ -186,14 +198,14 @@ class ConcurrentCase(object):
             self.loop.stop()
 
 
-    def run(server):
-        for i in range(self.concurrent):
-            c = ouou.net.Client(loop)
+    def run(self, ip, port):
+        for i in range(self.count):
+            c = ouou.net.Client(self.loop)
             c.set_message_callback(self.handle_message)
             c.set_state_callback(self.state_callback)
-            request_timestamp[c.cid] = util.get_milliseconds()
-            clients.add(c.cid)
-            c.connect('202.104.236.88', 1862)
+            self.request_timestamp[c.cid] = util.get_milliseconds()
+            self.clients.add(c.cid)
+            c.connect(ip, port)
 
         self.loop.call_later(CHECK_PERIOD, self.check_response)
         try:
@@ -215,11 +227,14 @@ class ConcurrentCase(object):
 
 
     def handle_message(self, c, m):
+        if m.empty():
+            logging.info('got empty message')
+            return
         if m.is_multiple_message():
             for message in m:
                 self.handle_single(c, message)
         else:
-            self.handle_single(m)
+            self.handle_single(c, m)
 
 
     def state_callback(self, c, new_state):
@@ -235,7 +250,7 @@ class ConcurrentCase(object):
             self.clients.remove(c.cid)
 
         elif new_state == c.CONNECTED:
-            c.send_message(*self.message_to_send)
+            c.send_message(*self.messages_to_send)
 
 
 if __name__ == '__main__':
@@ -248,10 +263,11 @@ if __name__ == '__main__':
                       help='concurrent count')
 
     options, args = parser.parse_args()
-    message_to_send = [messages[options.msg_id]] if options.msg_id else list(messages.values())
+    messages_to_send = [messages[options.msg_id]] if options.msg_id else list(messages.values())
     if options.push:
-        for m in message_to_send:
+        for m in messages_to_send:
             if hasattr(m, push_type):
                 m.push_type = message.PUSH_TYPE_REGISTER
 
-    run_case(options.count)
+    case = ConcurrentCase(options.count, messages_to_send)
+    case.run('202.104.236.84', 1862)

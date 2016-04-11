@@ -18,6 +18,8 @@ REQ_TYPE_MODULE = 2
 REQ_TYPE_GLOBAL_QUOTE = 3
 REQ_TYPE_MARKET_MOULE = 4
 
+PRINT_PREFIX = '\n\t'
+
 CHINSE_NUMBER = [ '零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
 
 __all__ = [x for x in locals() if not x.startswith('__')]
