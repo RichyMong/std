@@ -2,9 +2,9 @@ import asyncio
 import socket
 import errno
 import logging
-import emoney.message
+import ouou.message
 from datetime import datetime
-from emoney.util.basetypes import Char
+from ouou.util.basetypes import Char
 
 LOGGER = logging.getLogger("client")
 
@@ -26,7 +26,7 @@ class BaseClient(object):
     CLOSING = 4
 
     HEARTBEAT_PERIOD = 30
-    HeartBeat = emoney.message.Request_5517
+    HeartBeat = ouou.message.Request_5517
 
     current_client_id = 0
 
@@ -75,7 +75,7 @@ class BaseClient(object):
         assert len(msgs)
 
         if len(msgs) > 1:
-            multiple = emoney.message.MultipleMessage()
+            multiple = ouou.message.MultipleMessage()
             for m in msgs:
                 self._add_waited_message(m)
                 multiple.add_message(m)

@@ -13,7 +13,10 @@ def CString(array_size, encoding = 'utf-8'):
             return Wrapped(b.decode(encoding))
 
         def tobytes(self):
-            return self.encode(encoding)
+            x = self
+            while len(x) < array_size:
+                x += '\0'
+            return x.encode(encoding)
 
     return Wrapped
 
@@ -113,19 +116,3 @@ def Vector(size_cls, elem_cls):
     return Wrapped
 
 ByteVector = Vector(Byte, Byte)
-
-if __name__ == '__main__':
-    ay = Vector(Byte, Int)()
-    ay.append(1)
-    ay.append(2)
-    ay.append(1)
-    ay.append(1)
-    print(len(ay), ay)
-    b = ay.tobytes()
-    print(len(b))
-    ay = Vector(Byte, Int).frombytes(b)
-    print(len(ay), ay)
-    s = String('hello')
-    b = s.tobytes()
-    print(len(b), b)
-    print(String.frombytes(b))

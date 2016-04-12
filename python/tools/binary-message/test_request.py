@@ -1,4 +1,4 @@
-from emoney.message import *
-from emoney.util import *
+from ouou.message import *
+from ouou.util import *
 
 

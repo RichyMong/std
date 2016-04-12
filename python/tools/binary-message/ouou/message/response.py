@@ -4,8 +4,8 @@ from functools import reduce
 from .import message
 from .message import Attribute, BinaryObject, DependentAttribute, DependentFieldsAttribute
 from .const import *
-from emoney.util.stream import Reader
-from emoney.util import *
+from ouou.util.stream import Reader
+from ouou.util import *
 
 __all__ = [
             'Response_5501', 'Response_5502', 'Response_5503', 'Response_5504',
@@ -667,7 +667,7 @@ class Response_5518(message.Message, metaclass = ResponseMeta):
         )
 
         attributes_info = (
-            Attribute('md5', Array(33, Char), 'MD5'),
+            Attribute('md5', CString(33), 'MD5'),
             Attribute('raw_size', Int, '文件原始长度'),
             Attribute('compressed_data', Vector(Int, Byte), '压缩后数据'),
         )

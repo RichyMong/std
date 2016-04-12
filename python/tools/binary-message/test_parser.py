@@ -1,4 +1,4 @@
-from emoney import message
+from ouou import message
 
 def parse_hex(hex_data):
     b = bytearray.fromhex(hex_data)

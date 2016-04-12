@@ -4,11 +4,11 @@ import errno
 import logging
 import collections
 import sys
-import emoney
+import ouou
 import optparse
 import random
 from datetime import datetime,timedelta
-from emoney import util, message
+from ouou import util, message
 
 logging.basicConfig(format = '%(asctime)s %(name)-12s %(levelname)s %(message)s',
                 datefmt = '%F %T',
@@ -200,7 +200,7 @@ class ConcurrentCase(object):
 
     def run(self, ip, port):
         for i in range(self.count):
-            c = emoney.net.Client(self.loop)
+            c = ouou.net.Client(self.loop)
             c.set_message_callback(self.handle_message)
             c.set_state_callback(self.state_callback)
             self.request_timestamp[c.cid] = util.get_milliseconds()

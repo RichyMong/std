@@ -1,7 +1,7 @@
 from . import message
 from .message import Attribute
 from .const import *
-from emoney.util import *
+from ouou.util import *
 
 __all__ = [
             'Request_5501', 'Request_5502', 'Request_5503', 'Request_5504',
@@ -171,7 +171,7 @@ class Request_5517(message.Message, metaclass = RequestMeta):
 class Request_5518(message.Message, metaclass = RequestMeta):
     attributes_info = (
         Attribute('pid', UShort, '协议标识'),
-        Attribute('md5', Array(33, Byte), 'MD5校验')
+        Attribute('md5', CString(33), 'MD5校验')
     )
 
 def analyze_hex(content):
