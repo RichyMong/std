@@ -18,16 +18,13 @@ class Client(base_client.BaseClient):
         else:
             base_client.LOGGER.error('connection to {} error {}'.format(addr, ec))
 
-
     def send_data(self, data):
         self._sock.sendall(data)
-
 
     def _close(self):
         if self.state == self.CONNECTED:
             self._loop.remove_reader(self._sock.fileno())
         super()._close()
-
 
     def _data_ready(self):
         try:
@@ -47,7 +44,6 @@ class Client(base_client.BaseClient):
                         break
                     self.handle_message(p)
                     self._buf = self._buf[p.size():]
-
 
     def _connection_made(self):
         self._loop.remove_writer(self._sock.fileno())

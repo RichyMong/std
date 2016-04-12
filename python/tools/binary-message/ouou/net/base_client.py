@@ -11,10 +11,8 @@ LOGGER = logging.getLogger("client")
 def default_message_callback(c, data):
     LOGGER.debug('client[{}] receive data length: {}'.format(c.cid, len(data)))
 
-
 def default_state_callback(c, state):
     LOGGER.debug('client[{}] state changed to: {}'.format(c.cid, state))
-
 
 class BaseClient(object):
     # State change: CLOSED -> CONNECTING -> CONNECTED
@@ -40,10 +38,8 @@ class BaseClient(object):
         self._waited_response = []
         self._waited_push = set()
 
-
     def send_data(self, data):
         raise NotImplementedError('do not use this class directly')
-
 
     def is_waiting_for_push(self):
         '''
@@ -52,7 +48,6 @@ class BaseClient(object):
         '''
         return self._waited_push != set()
 
-
     def is_waiting_for_response(self):
         '''
         Could just return `_waited_response`. However we want to make sure
@@ -60,16 +55,13 @@ class BaseClient(object):
         '''
         return self._waited_response != []
 
-
     def is_waiting_for_msg(self):
         return any((self.is_waiting_for_push(), self.is_waiting_for_response()))
-
 
     def _add_waited_message(self, msg):
         self._waited_response.append(msg.header.msg_id)
         if msg.is_asked_for_push():
             self._waited_push.add(msg.header.msg_id)
-
 
     def send_message(self, *msgs):
         assert len(msgs)
@@ -84,7 +76,6 @@ class BaseClient(object):
             self._add_waited_message(msgs[0])
             self.send_data(msgs[0].tobytes())
 
-
     def handle_message(self, msg):
         msg_id = msg.header.msg_id
         waiting = msg_id in self._waited_response
@@ -98,7 +89,6 @@ class BaseClient(object):
         if msg_id != BaseClient.HeartBeat.MSG_ID or waiting:
             self._message_callback(self, msg)
 
-
     def _connect_check(self):
         if self.state == BaseClient.CONNECTED:
             raise RuntimeError('{} connected to {}'.format(
@@ -108,19 +98,15 @@ class BaseClient(object):
         self.state = BaseClient.CONNECTING
         self._sock = socket.socket()
 
-
     def set_message_callback(self, callback):
         self._message_callback = callback or default_message_callback
-
 
     def set_state_callback(self, callback):
         self._state_callback = callback or default_state_callback
 
-
     def close(self):
         self.state = BaseClient.CLOSING
         self._close()
-
 
     def keep_alive(self):
         LOGGER.info('keep alive')
@@ -129,22 +115,18 @@ class BaseClient(object):
         self.send_message(msg)
         self._loop.call_later(self.HEARTBEAT_PERIOD, self.keep_alive)
 
-
     def change_state(self, new_state):
         self._state_callback(self, new_state)
         self.state = new_state
         if new_state == BaseClient.CONNECTED:
             self._loop.call_later(self.HEARTBEAT_PERIOD, self.keep_alive)
 
-
     def _close(self):
         self.change_state(BaseClient.CLOSED)
         self._sock.close()
 
-
     def __repr__(self):
         return 'Client<{}>'.format(self.cid)
-
 
     @staticmethod
     def next_cid():

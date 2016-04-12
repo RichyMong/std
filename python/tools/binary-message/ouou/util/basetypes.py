@@ -1,7 +1,7 @@
 import struct
 
-__all__ = ['Char', 'Byte', 'Short', 'UShort', 'Int', 'DigitInt', 'UInt', 'LargeInt',
-           'Long', 'ULong' ]
+__all__ = [ 'Char', 'Byte', 'Short', 'UShort', 'Int', 'DigitInt', 'UInt',
+            'LargeInt', 'Long', 'ULong' ]
 
 BYTE_ORDER = '<'
 
@@ -20,7 +20,7 @@ def size(obj):
     return type(obj).type_size
 
 
-class LegacyTypeMeta(type):
+class BaseTypeMeta(type):
     def __new__(meta, classname, supers, classdict):
         cls = type.__new__(meta, classname, supers, classdict)
         cls.tobytes = tobytes
@@ -47,7 +47,7 @@ class LegacyTypeMeta(type):
         return cls.frombytes(buf)
 
 
-class Char(str, metaclass = LegacyTypeMeta):
+class Char(str, metaclass = BaseTypeMeta):
     pack_fmt = 'c'
     def __init__(self, s = ''):
         if len(s) > 1:
@@ -55,19 +55,19 @@ class Char(str, metaclass = LegacyTypeMeta):
         self = s
 
 
-class Byte(int, metaclass = LegacyTypeMeta):
+class Byte(int, metaclass = BaseTypeMeta):
     pack_fmt = 'B'
 
 
-class Short(int, metaclass = LegacyTypeMeta):
+class Short(int, metaclass = BaseTypeMeta):
     pack_fmt = 'h'
 
 
-class UShort(int, metaclass = LegacyTypeMeta):
+class UShort(int, metaclass = BaseTypeMeta):
     pack_fmt = 'H'
 
 
-class Int(int, metaclass = LegacyTypeMeta):
+class Int(int, metaclass = BaseTypeMeta):
     pack_fmt = 'i'
 
 
@@ -79,19 +79,19 @@ def DigitInt(digit_size):
     return Wrapper
 
 
-class UInt(int, metaclass = LegacyTypeMeta):
+class UInt(int, metaclass = BaseTypeMeta):
     pack_fmt = 'I'
 
 
-class Long(int, metaclass = LegacyTypeMeta):
+class Long(int, metaclass = BaseTypeMeta):
     pack_fmt = 'l'
 
 
-class ULong(int, metaclass = LegacyTypeMeta):
+class ULong(int, metaclass = BaseTypeMeta):
     pack_fmt = 'L'
 
 
-class LargeInt(int, metaclass = LegacyTypeMeta):
+class LargeInt(int, metaclass = BaseTypeMeta):
     pack_fmt = 'i'
 
     @staticmethod
@@ -113,17 +113,3 @@ class LargeInt(int, metaclass = LegacyTypeMeta):
 
     def tobytes(self):
         return Int(self.value).tobytes()
-
-if __name__ == '__main__':
-    sh = Short(0x1234)
-    i = Int(0x4578ffff)
-    c = Char('h')
-    print(type(c))
-    print(sh, i, c)
-    b = sh.tobytes() + i.tobytes() + c.tobytes()
-    print(len(b))
-    sh = Short.frombytes(b, 0)
-    i = Int.frombytes(b, 2)
-    c = Char.frombytes(b, 6)
-    print(sh, i, c)
-    print(sh.size())

@@ -14,11 +14,9 @@ class Client(base_client.BaseClient):
         f = self._loop.sock_connect(self._sock, (host, port))
         f.add_done_callback(self._connection_made)
 
-
     def send_data(self, data):
         f = self._loop.sock_sendall(self._sock, data)
         f.add_done_callback(self._data_sent)
-
 
     def _connection_made(self, of):
         try:
@@ -29,11 +27,9 @@ class Client(base_client.BaseClient):
         else:
             self.change_state(self.CONNECTED)
 
-
     def _data_sent(self, of = None):
         f = self._loop.sock_recv(self._sock, Header.type_size)
         f.add_done_callback(self._data_received)
-
 
     def _data_received(self, of):
         try:
