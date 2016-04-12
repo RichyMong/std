@@ -91,6 +91,32 @@ class BinaryObject(metaclass = BinaryObjectMeta):
             if not hasattr(self, name):
                 setattr(self, name, kwargs.get(name, cls()))
 
+    def __iter__(self):
+        s = []
+        for name, cls in self._fields.items():
+            if hasattr(self, name):
+                s.append(getattr(self, name))
+        return iter(s)
+
+    def __getitem__(self, idx):
+        return getattr(self, self.attributes_info[idx].name, None)
+
+    def __eq__(self, other):
+        if type(self) is type(other):
+            for name, cls in self._fields.items():
+                v1, v2 = getattr(self, name), getattr(other, name)
+                if issubclass(cls, BinaryObject):
+                    v1, v2 = tuple(v1, v2)
+                if v1 != v2:
+                    return False
+        elif isinstance(other, collections.Iterable):
+            for i in range(min(len(self.attributes_info), len(other))):
+                if self[i] != other[i]:
+                    return False
+        else:
+            return False
+        return True
+
     def __str__(self):
         r = ''
 

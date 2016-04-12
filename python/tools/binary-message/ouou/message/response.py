@@ -74,11 +74,17 @@ def VarFieldsVector(size_cls, fields, iterfunc):
 
         def tobytes(self, target):
             data_type = self.get_data_type(target)
-            v = Vector(size_cls, data_type)()
+            b = size_cls.pack(len(self))
             for x in self:
-                v.append(x)
+                '''
+                Can not check if x is an instance of data_type here since
+                create_class returns an unique class every time.
+                '''
+                if not isinstance(x, BinaryObject):
+                    x = data_type(x)
+                b += x.tobytes()
 
-            return v.tobytes()
+            return b
 
         def __str__(self):
             r = '共 {} 个'.format(len(self))

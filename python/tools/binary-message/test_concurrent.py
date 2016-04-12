@@ -108,7 +108,7 @@ msg_5517.pid = 1
 
 msg_5518 = message.Request_5518()
 msg_5518.pid = 1
-msg_5518.md5 = '2CD843BA279539E84A498B189956E272'.encode()
+msg_5518.md5 = '2CD843BA279539E84A498B189956E272'
 
 all_messages = {
              5501 : msg_5501,
