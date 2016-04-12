@@ -1,7 +1,7 @@
 import asyncio
 import socket
 from . import base_client
-from ouou.message import Header, Message
+from emoney.message import Header, Message
 
 class Client(base_client.BaseClient):
     def __init__(self, loop):
@@ -50,10 +50,10 @@ class Client(base_client.BaseClient):
             assert len(data) == Header.type_size
 
             self._recv_header = Header.frombytes(data, c2s = False)
-            f = self._loop.sock_recv(self._sock, self._recv_header.msg_size + 1)
+            f = self._loop.sock_recv(self._sock, self._recv_header.msg_size)
             f.add_done_callback(self._data_received)
         else:
-            assert len(data) == self._recv_header.msg_size + 1
+            assert len(data) == self._recv_header.msg_size
 
             p = Message.frombytes(data, self._recv_header, c2s = False)
             self.handle_message(p)

@@ -64,16 +64,16 @@ def TypeList(elem_cls):
             else:
                 return sum(x.size() for x in self)
 
-        def __repr__(self):
+        def __str__(self):
             if issubclass(elem_cls, int):
                 return '['  + to_range_str(self) + '] ({})'.format(len(self))
             elif issubclass(elem_cls, str):
                 return '[ ' + ' '.join(x for x in self) + '] ({})'.format(len(self))
             else:
                 r = '共 {} 个'.format(len(self))
-                sep = 30 * '-'
                 for i, x in enumerate(self):
-                    r += '\n\t' + sep + str(i + 1) + sep + '\n\t{}'.format(x)
+                    r += '{p}{sep}{no}{sep}{p}{x}'.format(p = '\n\t',
+                             sep = 30 * '-', no = i + 1, x = x)
                 return r
 
     return WrapperList
@@ -84,11 +84,16 @@ def Array(array_size, elem_cls):
         def fromstream(cls, reader):
             return cls(reader.read_times(elem_cls, array_size))
 
-        def __repr__(self):
+        def __str__(self):
             if issubclass(elem_cls, str):
                 return ''.join(x for x in self)
             else:
-                return super().__repr__()
+                return super().__str__()
+
+        def tobytes(self):
+            if len(self) != array_size:
+                self.extend(elem_cls() for i in range(array_size - len(self)))
+            return super().tobytes()
 
     return Wrapped
 

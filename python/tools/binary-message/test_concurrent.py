@@ -4,11 +4,11 @@ import errno
 import logging
 import collections
 import sys
-import ouou
+import emoney
 import optparse
 import random
 from datetime import datetime,timedelta
-from ouou import util, message
+from emoney import util, message
 
 logging.basicConfig(format = '%(asctime)s %(name)-12s %(levelname)s %(message)s',
                 datefmt = '%F %T',
@@ -108,9 +108,9 @@ msg_5517.pid = 1
 
 msg_5518 = message.Request_5518()
 msg_5518.pid = 1
-msg_5518.md5 = 'aaa'
+msg_5518.md5 = '2CD843BA279539E84A498B189956E272'.encode()
 
-messages = {
+all_messages = {
              5501 : msg_5501,
              5502 : msg_5502,
              5503 : msg_5503,
@@ -146,13 +146,13 @@ class ConcurrentCase(object):
 
 
     def all_response_ok(self):
-        return len(self.completed_messages) == len(self.round_trip)
+        return len(self.completed_messages) == len(self.request_timestamp)
 
 
     def print_result(self):
         request_cnt = len(self.request_timestamp)
         for k, v in  self.round_trip.items():
-            if len(v) == request_cnt:
+            if len(v) >= request_cnt:
                 if k not in self.completed_messages:
                     logging.info('message {} completed, request {}, response {}'.format(
                             k, request_cnt, len(v)
@@ -200,7 +200,7 @@ class ConcurrentCase(object):
 
     def run(self, ip, port):
         for i in range(self.count):
-            c = ouou.net.Client(self.loop)
+            c = emoney.net.Client(self.loop)
             c.set_message_callback(self.handle_message)
             c.set_state_callback(self.state_callback)
             self.request_timestamp[c.cid] = util.get_milliseconds()
@@ -216,9 +216,9 @@ class ConcurrentCase(object):
 
 
     def handle_single(self, c, m):
-        if not m.is_push_pkg():
+        if not m.is_push_msg():
             duration = util.get_milliseconds() - self.request_timestamp[c.cid]
-            self.round_trip[m.msg_id].append(duration)
+            self.round_trip[m.MSG_ID].append(duration)
 
         print(m)
         if not c.is_waiting_for_msg() or not any(
@@ -228,7 +228,7 @@ class ConcurrentCase(object):
 
     def handle_message(self, c, m):
         if m.empty():
-            logging.info('got empty message')
+            logging.info('got empty {} message'.format(m.msg_id))
             return
         if m.is_multiple_message():
             for message in m:
@@ -252,22 +252,45 @@ class ConcurrentCase(object):
         elif new_state == c.CONNECTED:
             c.send_message(*self.messages_to_send)
 
+def test_messages(messages, ip, port = 1862):
+    messages_to_send = []
+    for mid in sorted(messages):
+        m = all_messages[mid]
+        if hasattr(m, 'push_type'):
+            if options.push:
+                m.push_type = message.PUSH_TYPE_REGISTER
+            else:
+                m.push_type = message.PUSH_TYPE_ONCE
+        messages_to_send.append(m)
+
+    case = ConcurrentCase(options.count, messages_to_send)
+    case.run(ip, port)
 
 if __name__ == '__main__':
     parser = optparse.OptionParser()
-    parser.add_option('-m', '--message', action='store', type = int, dest='msg_id', default = 0,
+    parser.add_option('-m', '--message', action='store', type = str, dest='msg_id', default = '',
                     help ='message to be sent')
-    parser.add_option('-p', '--push', action='store_true', dest='push', default=False,
+    # receive push, -p is ideal but we have --port option
+    parser.add_option('-s', '--server', action='store', type = str, dest='server', default='88',
+                      help='the server to use, 84/86/88, default 88')
+    parser.add_option('-i', '--ip', action='store', type = str, dest='ip', default='',
+                      help='the ip address of the server')
+    parser.add_option('-p', '--port', action='store', type = int, dest='port', default=1862,
+                      help='the port of the server, default 1862')
+    parser.add_option('-r', '--receive-push', action='store_true', dest='push', default=False,
                       help='receive push message')
     parser.add_option('-c', '--count', action='store_const', dest='count', default=1,
                       help='concurrent count')
 
     options, args = parser.parse_args()
-    messages_to_send = [messages[options.msg_id]] if options.msg_id else list(messages.values())
-    if options.push:
-        for m in messages_to_send:
-            if hasattr(m, push_type):
-                m.push_type = message.PUSH_TYPE_REGISTER
+    messages = set()
+    if options.msg_id:
+        for mid in util.range_str_to_list(options.msg_id):
+            messages.add(mid)
+    else:
+        messages = all_messages.keys()
 
-    case = ConcurrentCase(options.count, messages_to_send)
-    case.run('202.104.236.84', 1862)
+    if options.ip: ip = options.ip
+    else: ip = '202.104.236.{}'.format(options.server)
+
+    test_messages(messages, ip, options.port)

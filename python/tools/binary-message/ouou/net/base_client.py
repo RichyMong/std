@@ -2,11 +2,11 @@ import asyncio
 import socket
 import errno
 import logging
+import emoney.message
 from datetime import datetime
-import ouou.message
+from emoney.util.basetypes import Char
 
 LOGGER = logging.getLogger("client")
-
 
 def default_message_callback(c, data):
     LOGGER.debug('client[{}] receive data length: {}'.format(c.cid, len(data)))
@@ -26,7 +26,7 @@ class BaseClient(object):
     CLOSING = 4
 
     HEARTBEAT_PERIOD = 30
-    HeartBeat = ouou.message.Request_5517
+    HeartBeat = emoney.message.Request_5517
 
     current_client_id = 0
 
@@ -75,7 +75,7 @@ class BaseClient(object):
         assert len(msgs)
 
         if len(msgs) > 1:
-            multiple = ouou.message.MultipleMessage()
+            multiple = emoney.message.MultipleMessage()
             for m in msgs:
                 self._add_waited_message(m)
                 multiple.add_message(m)
@@ -88,17 +88,15 @@ class BaseClient(object):
     def handle_message(self, msg):
         msg_id = msg.header.msg_id
         waiting = msg_id in self._waited_response
-        if not msg.is_push_pkg() and msg_id != 5500:
+        if not msg.is_push_msg() and msg_id != 5500:
             try:
                 self._waited_response.remove(msg.header.msg_id)
             except ValueError:
                 LOGGER.error('{} received unexpected message {}'.format(self, msg_id))
                 LOGGER.error('{} waiting for {}'.format(self, self._waited_response))
 
-        if msg_id != BaseClient.HeartBeat.msg_id or waiting:
+        if msg_id != BaseClient.HeartBeat.MSG_ID or waiting:
             self._message_callback(self, msg)
-        else:
-            self._loop.call_later(self.HEARTBEAT_PERIOD, self.keep_alive)
 
 
     def _connect_check(self):
@@ -125,9 +123,11 @@ class BaseClient(object):
 
 
     def keep_alive(self):
+        LOGGER.info('keep alive')
         msg = BaseClient.HeartBeat()
         msg.pid = 1
         self.send_message(msg)
+        self._loop.call_later(self.HEARTBEAT_PERIOD, self.keep_alive)
 
 
     def change_state(self, new_state):

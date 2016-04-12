@@ -1,5 +1,5 @@
-from ouou.message import *
-from ouou.util import *
+from emoney.message import *
+from emoney.util import *
 
 def test_5515():
     r = Response_5515()
@@ -48,15 +48,15 @@ def test_5511():
     r = Response_5511()
     r.stock_id = 'HK|00700'
     r.pid = 1
-    import pdb; pdb.set_trace()
     r.data.append((1, 'name', 0x03, 0, '开盘价'))
     r.data.append((2, 'stock', 0x04, 0, ['现手', '现手方向']))
     b = r.tobytes()
     t = Message.allfrombytes(b, c2s = False)
     print(t)
 
-test_5511()
-test_5503()
-test_5504()
-test_5506()
-test_5515()
+if __name__ == '__main__':
+    test_5511()
+    test_5503()
+    test_5504()
+    test_5506()
+    test_5515()

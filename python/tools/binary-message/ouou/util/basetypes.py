@@ -29,6 +29,11 @@ class LegacyTypeMeta(type):
 
         return cls
 
+    def pack(cls, obj):
+        if isinstance(obj, str):
+            return struct.pack(cls.pack_fmt, obj.encode())
+        else:
+            return struct.pack(BYTE_ORDER + cls.pack_fmt, obj)
 
     def frombytes(cls, buf, offset = 0):
         value = struct.unpack_from(cls.pack_fmt, buf, offset)[0]
@@ -36,7 +41,6 @@ class LegacyTypeMeta(type):
             return cls(value.decode())
         else:
             return cls(value)
-
 
     def fromstream(cls, reader, **kwargs):
         buf = reader.read_bytes(cls.type_size)
@@ -50,17 +54,22 @@ class Char(str, metaclass = LegacyTypeMeta):
             raise ValueError('char value "{}" is longer than 1'.format(s))
         self = s
 
+
 class Byte(int, metaclass = LegacyTypeMeta):
     pack_fmt = 'B'
+
 
 class Short(int, metaclass = LegacyTypeMeta):
     pack_fmt = 'h'
 
+
 class UShort(int, metaclass = LegacyTypeMeta):
     pack_fmt = 'H'
 
+
 class Int(int, metaclass = LegacyTypeMeta):
     pack_fmt = 'i'
+
 
 def DigitInt(digit_size):
     class Wrapper(Int):
@@ -69,14 +78,18 @@ def DigitInt(digit_size):
                          digits = digit_size)
     return Wrapper
 
+
 class UInt(int, metaclass = LegacyTypeMeta):
     pack_fmt = 'I'
+
 
 class Long(int, metaclass = LegacyTypeMeta):
     pack_fmt = 'l'
 
+
 class ULong(int, metaclass = LegacyTypeMeta):
     pack_fmt = 'L'
+
 
 class LargeInt(int, metaclass = LegacyTypeMeta):
     pack_fmt = 'i'
@@ -95,13 +108,11 @@ class LargeInt(int, metaclass = LegacyTypeMeta):
 
         return LargeInt(value) if not negative else LargeInt(-value)
 
-
     def __len__(self):
         return 4
 
     def tobytes(self):
         return Int(self.value).tobytes()
-
 
 if __name__ == '__main__':
     sh = Short(0x1234)

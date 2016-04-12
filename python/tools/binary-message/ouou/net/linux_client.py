@@ -1,7 +1,7 @@
 import socket
 import errno
 from . import base_client
-from ouou.message import Header, Message
+from emoney.message import Header, Message
 
 class Client(base_client.BaseClient):
     def __init__(self, loop):
@@ -41,11 +41,12 @@ class Client(base_client.BaseClient):
                 self._close()
             else:
                 self._buf += data
-                p = Message.allfrombytes(self._buf, c2s = False)
-                if p:
+                while True:
+                    p = Message.allfrombytes(self._buf, c2s = False)
+                    if not p:
+                        break
                     self.handle_message(p)
-                    # be careful to skip the trailing '}'
-                    self._buf = self._buf[p.size()+1:]
+                    self._buf = self._buf[p.size():]
 
 
     def _connection_made(self):

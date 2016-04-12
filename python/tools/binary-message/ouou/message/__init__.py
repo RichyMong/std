@@ -1,5 +1,4 @@
-from .message import Header
-from .message import Message
+from .message import *
 from .request import *
 from .response import *
 from .const import *

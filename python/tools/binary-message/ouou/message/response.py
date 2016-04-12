@@ -4,8 +4,8 @@ from functools import reduce
 from .import message
 from .message import Attribute, BinaryObject, DependentAttribute, DependentFieldsAttribute
 from .const import *
-from ouou.util.stream import Reader
-from ouou.util import *
+from emoney.util.stream import Reader
+from emoney.util import *
 
 __all__ = [
             'Response_5501', 'Response_5502', 'Response_5503', 'Response_5504',
@@ -81,11 +81,10 @@ def VarFieldsVector(size_cls, fields, iterfunc):
             return v.tobytes()
 
         def __str__(self):
-            sep = 30 * '-'
             r = '共 {} 个'.format(len(self))
             for i, x in enumerate(self):
-                r += PRINT_PREFIX
-                r += sep + str(i + 1) + sep + PRINT_PREFIX + '{}'.format(x)
+                r += '{p}{sep}{no}{sep}{p}{x}'.format(p = PRINT_PREFIX,
+                         sep = 30 * '-', no = i + 1, x = x)
             return r
 
     return Wrapper
@@ -99,7 +98,7 @@ class PriceSeat(UInt):
     def __str__(self):
         price = self & 0X003FFFFF
         seat = (self >> 22) & 0XCFF
-        return '{} : {}'.format(price, seat)
+        return '{:.{}f} : {}'.format(price / 1000.0, 4, seat)
 
 def BusinessLevel(level):
     class OrderDetail(BinaryObject):
@@ -128,18 +127,18 @@ def BusinessLevel(level):
 class ResponseMeta(message.MessageMeta):
     '''
     The meta class for response messages. The according class is supposed to
-    define a 'msg_id' class attribute and it will be registered to process
+    define a 'MSG_ID' class attribute and it will be registered to process
     response messages of this type. If there's no class registered to process
     push messages of this type, we will also register it in push messages.
     '''
     def __new__(mcs, name, bases, attrs):
         cls = super().__new__(mcs, name, bases, attrs)
 
-        message.response_messages[cls.msg_id] = cls
+        message.response_messages[cls.MSG_ID] = cls
 
         # Be careful not to override the push message already registered.
-        if cls.msg_id not in message.push_messages:
-            message.push_messages[cls.msg_id] = cls
+        if cls.MSG_ID not in message.push_messages:
+            message.push_messages[cls.MSG_ID] = cls
 
         return cls
 
@@ -151,10 +150,10 @@ class PushMeta(message.MessageMeta):
     def __new__(mcs, name, bases, attrs):
         cls = super().__new__(mcs, name, bases, attrs)
 
-        if cls.msg_id in message.push_messages and type(message.push_messages) is PushMeta:
-            raise RuntimeError('duplicated push message {} '.format(cls.msg_id))
+        if cls.MSG_ID in message.push_messages and type(message.push_messages) is PushMeta:
+            raise RuntimeError('duplicated push message {} '.format(cls.MSG_ID))
 
-        message.push_messages[cls.msg_id] = cls
+        message.push_messages[cls.MSG_ID] = cls
 
         return cls
 
@@ -217,24 +216,8 @@ class TimeSharing(message.BinaryObject):
     )
 
 
-class Response_5500(message.Message, metaclass = ResponseMeta):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.buf = kwargs.get('reader', None)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        m = message.Message.allfromstream(self.reader)
-        if not m:
-            raise StopIteration
-
-        return m
-
-    @classmethod
-    def _fromstream(cls, reader, **kwargs):
-        return cls(reader = reader, **kwargs)
+class Response_5500(message.MultipleMessage, metaclass = ResponseMeta):
+    pass
 
 class Response_5501(message.Message, metaclass = ResponseMeta):
     quotation_response_fields = (
@@ -246,10 +229,10 @@ class Response_5501(message.Message, metaclass = ResponseMeta):
         Attribute('market_type', UShort, '市场类别'),
         Attribute('trade_flag', Byte, '交易标示'),
         Attribute('close_price', UInt, '昨收价'),
-        Attribute('open_price', UInt, '开盘价'),
-        Attribute('highest_price', UInt, '最高价'),
-        Attribute('lowest_price', UInt, '最低价'),
-        Attribute('latest_price', Int, '最新价'),
+        Attribute('open_price', DigitInt(3), '开盘价'),
+        Attribute('highest_price', DigitInt(3), '最高价'),
+        Attribute('lowest_price', DigitInt(3), '最低价'),
+        Attribute('latest_price', DigitInt(3), '最新价'),
         Attribute('volume', LargeInt, '成交量'),
         Attribute('amount', LargeInt, '成交额'),
         Attribute('trade_count', UInt, '成交笔数'),
@@ -257,7 +240,7 @@ class Response_5501(message.Message, metaclass = ResponseMeta):
         Attribute('newvol', LargeInt, '现手'),
         Attribute('newvol_direction', Byte, '现手方向'),
         Attribute('open_interest_change', LargeInt, '持仓量变化'),
-        Attribute('avg_price', Int, '均价'),
+        Attribute('avg_price', DigitInt(4), '均价'),
         Attribute('open_interest', LargeInt, '持仓量'),
         Attribute('settlement_price', UInt, '今结算价'),
         Attribute('last_open_interest', LargeInt, '昨持仓量'),
@@ -270,25 +253,25 @@ class Response_5501(message.Message, metaclass = ResponseMeta):
         Attribute('sell1_volume', UInt, '卖盘1挂单量'),
         Attribute('bid_sell_5', BusinessLevel(5), '买卖五档'),
         Attribute('bid_sell_10', BusinessLevel(10), '买卖十档'),
-        Attribute('change_percent', Int, '涨跌幅'),
+        Attribute('change_percent', DigitInt(2), '涨跌幅'),
         Attribute('change_value', Int, '涨跌值'),
         Attribute('price_digits', Byte, '价格类小数位'),
         Attribute('display_digits', Byte, '显示小数位'),
         Attribute('buyvol', LargeInt, '内盘'),
-        Attribute('profit', Int, '收益'),
-        Attribute('pe_ratio', Int, '市盈率'),
-        Attribute('net_assets', Int, '净资产'),
-        Attribute('pb_ratio', Int, '市净率'),
+        Attribute('profit', DigitInt(3), '收益'),
+        Attribute('pe_ratio', DigitInt(3), '市盈率'),
+        Attribute('net_assets', DigitInt(3), '净资产'),
+        Attribute('pb_ratio', DigitInt(3), '市净率'),
         Attribute('total_stocks', LargeInt, '总股本'),
         Attribute('hk_stocks', LargeInt, '港股本'),
         Attribute('total_value', LargeInt, '总值'),
         Attribute('hk_value', LargeInt, '港值'),
-        Attribute('turnover_rate', Int, '换手率'),
+        Attribute('turnover_rate', DigitInt(4), '换手率'),
         Attribute('reverse_currency', Int, '反向汇率'),
         Attribute('hgt_flag', Byte, '沪港通标志'),
         Attribute('52_week_highest', UInt, '52周最高价'),
         Attribute('52_week_lowest', UInt, '52周最低价'),
-        Attribute('amplitude', Int, '振幅'),
+        Attribute('amplitude', DigitInt(2), '振幅'),
     )
 
     attributes_info = (
@@ -566,25 +549,25 @@ class Response_5512(message.Message, metaclass = ResponseMeta):
         Attribute('last_settlement_price', UInt, '昨结算价'),
         Attribute('limit_up_price', UInt, '涨停价'),
         Attribute('limit_down_price', UInt, '跌停价'),
-        Attribute('change_price_percent', Int, '涨跌幅'),
+        Attribute('change_price_percent', DigitInt(2), '涨跌幅'),
         Attribute('change_price', Int, '涨跌值'),
         Attribute('price_digits', Byte, '价格类小数位'),
         Attribute('display_digits', Byte, '显示小数位'),
         Attribute('buyvol', LargeInt, '内盘'),
-        Attribute('profit', Int, '收益'),
-        Attribute('pe_ratio', Int, '市盈率'),
-        Attribute('net_assets', Int, '净资产'),
-        Attribute('pb_ratio', Int, '市净率'),
+        Attribute('profit', DigitInt(3), '收益'),
+        Attribute('pe_ratio', DigitInt(3), '市盈率'),
+        Attribute('net_assets', DigitInt(3), '净资产'),
+        Attribute('pb_ratio', DigitInt(3), '市净率'),
         Attribute('total_share', LargeInt, '总股本'),
         Attribute('hk_share', LargeInt, '港股本'),
         Attribute('total_value', LargeInt, '总值'),
         Attribute('hk_value', LargeInt, '港值'),
-        Attribute('turnover_rate', Int, '换手率'),
+        Attribute('turnover_rate', DigitInt(4), '换手率'),
         Attribute('reverse_currency', Int, '反向汇率'),
         Attribute('hgt_flag', Byte, '沪港通标志'),
         Attribute('52_week_highest', UInt, '52周最高价'),
         Attribute('52_week_lowest', UInt, '52周最低价'),
-        Attribute('delta', Int, '振幅'),
+        Attribute('delta', DigitInt(3), '振幅'),
     )
 
     attributes_info = (
@@ -701,8 +684,7 @@ class Response_5518(message.Message, metaclass = ResponseMeta):
             r = 'MD5: {}'.format(self.md5)
             name_no = collections.defaultdict(list)
             for i, x in enumerate(self.broker_data):
-                if i: r += PRINT_PREFIX
-                r += '{} {}'.format(x.broker_no, x.broker_name)
+                r += PRINT_PREFIX + '{} {}'.format(x.broker_no, x.broker_name)
             return r
 
 
@@ -724,19 +706,15 @@ class Push_5514(message.Message, metaclass = PushMeta):
     )
 
 class Push_5516(message.Message, metaclass = PushMeta):
+    class Data(BinaryObject):
+        attributes_info = (
+            Attribute('fields', ByteVector, '返回字段'),
+            Attribute('fields_data', VarFields(Response_5501.quotation_response_fields,
+                            lambda self : self.fields), '')
+        )
+
     attributes_info = (
         Attribute('pid', UShort, '协议标识'),
         Attribute('total_num', UShort, '总数据个数'),
-        Attribute('return_num', UShort, '返回数据个数'),
+        Attribute('return_data', Vector(UShort, Data), '推送数据'),
     )
-
-if __name__ == '__main__':
-    r = Response_5515()
-    r.pid = 1
-    r.stock_id = 'HK|00700'
-    r.req_num = 10
-    r.buy_num = 5
-    r.sell_num = 5
-    r.buy_queue = [1, 2, 3, 4, 5]
-    r.sell_queue = [1, 2, 3, 4, 5]
-    r.tobytes()
