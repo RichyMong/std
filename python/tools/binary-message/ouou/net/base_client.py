@@ -4,7 +4,7 @@ import errno
 import logging
 import ouou.message
 from datetime import datetime
-from ouou.util.basetypes import Char
+from ..util.basetypes import Char
 
 LOGGER = logging.getLogger("client")
 

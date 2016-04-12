@@ -4,8 +4,8 @@ from functools import reduce
 from .import message
 from .message import Attribute, BinaryObject, DependentAttribute, DependentFieldsAttribute
 from .const import *
-from ouou.util.stream import Reader
-from ouou.util import *
+from ..util.stream import Reader
+from ..util import *
 
 __all__ = [
             'Response_5501', 'Response_5502', 'Response_5503', 'Response_5504',

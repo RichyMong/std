@@ -1,7 +1,7 @@
 from . import message
-from .message import Attribute
+from .message import Attribute, Message, MessageMeta
 from .const import *
-from ouou.util import *
+from ..util import *
 
 __all__ = [
             'Request_5501', 'Request_5502', 'Request_5503', 'Request_5504',
@@ -11,7 +11,7 @@ __all__ = [
             'Request_5517', 'Request_5518',
            ]
 
-class RequestMeta(message.MessageMeta):
+class RequestMeta(MessageMeta):
     def __new__(mcs, name, bases, attrs):
         cls = super().__new__(mcs, name, bases, attrs)
 
@@ -25,7 +25,7 @@ class RequestMeta(message.MessageMeta):
 class Request_5500(message.MultipleMessage, metaclass = RequestMeta):
     pass
 
-class Request_5501(message.Message, metaclass = RequestMeta):
+class Request_5501(Message, metaclass = RequestMeta):
     attributes_info = (
         Attribute('stock_id', String, '代码唯一标示'),
         Attribute('extra_data', Byte, '同时请求其他数据'),
@@ -34,7 +34,7 @@ class Request_5501(message.Message, metaclass = RequestMeta):
         Attribute('extra_fields', Vector(Byte, Byte), '请求附加字段')
     )
 
-class Request_5502(message.Message, metaclass = RequestMeta):
+class Request_5502(Message, metaclass = RequestMeta):
     attributes_info = (
         Attribute('pid', Byte, '协议标识'),
         Attribute('sort_field', UShort, '排序字段'),
@@ -57,7 +57,7 @@ class Request_5502(message.Message, metaclass = RequestMeta):
 
         return r
 
-class Request_5503(message.Message, metaclass = RequestMeta):
+class Request_5503(Message, metaclass = RequestMeta):
     attributes_info = (
         Attribute('stock_id', String, '代码唯一标识'),
         Attribute('data_pos', Int, '数据位置'),
@@ -66,30 +66,30 @@ class Request_5503(message.Message, metaclass = RequestMeta):
         Attribute('fields', Vector(Byte, Byte), '请求字段ID'),
     )
 
-class Request_5504(message.Message, metaclass = RequestMeta):
+class Request_5504(Message, metaclass = RequestMeta):
     attributes_info = (
           Attribute('market_code', String, '市场代码唯一标示'),
     )
 
-class Request_5505(message.Message, metaclass = RequestMeta):
+class Request_5505(Message, metaclass = RequestMeta):
     attributes_info = ()
 
-class Request_5506(message.Message, metaclass = RequestMeta):
+class Request_5506(Message, metaclass = RequestMeta):
     attributes_info = (
         Attribute('increment_id', UInt, '增量ID'),
         Attribute('current_count', UShort, '客户端的现有个数')
     )
 
-class Request_5508(message.Message, metaclass = RequestMeta):
+class Request_5508(Message, metaclass = RequestMeta):
     pass
 
-class Request_5509(message.Message, metaclass = RequestMeta):
+class Request_5509(Message, metaclass = RequestMeta):
     pass
 
-class Request_5510(message.Message, metaclass = RequestMeta):
+class Request_5510(Message, metaclass = RequestMeta):
     pass
 
-class Request_5511(message.Message, metaclass = RequestMeta):
+class Request_5511(Message, metaclass = RequestMeta):
     attributes_info = (
         Attribute('stock_id', String, '代码唯一标识'),
         Attribute('version', Int, '接口版本'),
@@ -103,7 +103,7 @@ class Request_5511(message.Message, metaclass = RequestMeta):
         self.push_type = PUSH_TYPE_ONCE
         return super().tobytes()
 
-class Request_5512(message.Message, metaclass = RequestMeta):
+class Request_5512(Message, metaclass = RequestMeta):
     attributes_info = (
         Attribute('pid', UShort, '协议标识'),
         Attribute('push_type', Byte, '推送类型'),
@@ -111,7 +111,7 @@ class Request_5512(message.Message, metaclass = RequestMeta):
         Attribute('fields', Vector(Byte, Byte), '请求字段ID'),
     )
 
-class Request_5513(message.Message, metaclass = RequestMeta):
+class Request_5513(Message, metaclass = RequestMeta):
     attributes_info = (
         Attribute('pid', UShort, '协议标识'),
         Attribute('push_type', Byte, '推送类型'),
@@ -120,7 +120,7 @@ class Request_5513(message.Message, metaclass = RequestMeta):
         Attribute('date_time', UInt, '请求开始时间')
     )
 
-class Request_5514(message.Message, metaclass = RequestMeta):
+class Request_5514(Message, metaclass = RequestMeta):
     attributes_info = (
         Attribute('pid', UShort, '协议标识'),
         Attribute('push_type', Byte, '推送类型'),
@@ -131,7 +131,7 @@ class Request_5514(message.Message, metaclass = RequestMeta):
         Attribute('nr_of_roots', Int, '请求根数')
     )
 
-class Request_5515(message.Message, metaclass = RequestMeta):
+class Request_5515(Message, metaclass = RequestMeta):
     attributes_info = (
         Attribute('pid', UShort, '协议标识'),
         Attribute('push_type', Byte, '推送类型'),
@@ -139,7 +139,7 @@ class Request_5515(message.Message, metaclass = RequestMeta):
         Attribute('number', Byte, '请求经纪队列个数')
     )
 
-class Request_5516(message.Message, metaclass = RequestMeta):
+class Request_5516(Message, metaclass = RequestMeta):
     # The fields are almost the same as Request_5502 except pid and push_type.
     # However, sort_field is Byte here.
     attributes_info = (
@@ -163,12 +163,12 @@ class Request_5516(message.Message, metaclass = RequestMeta):
 
         return r
 
-class Request_5517(message.Message, metaclass = RequestMeta):
+class Request_5517(Message, metaclass = RequestMeta):
     attributes_info = (
         Attribute('pid', UShort, '协议标识'),
     )
 
-class Request_5518(message.Message, metaclass = RequestMeta):
+class Request_5518(Message, metaclass = RequestMeta):
     attributes_info = (
         Attribute('pid', UShort, '协议标识'),
         Attribute('md5', CString(33), 'MD5校验')
@@ -179,4 +179,4 @@ def analyze_hex(content):
     if not len(blob):
         return
 
-    print(message.Message.allfrombytes(blob))
+    print(Message.allfrombytes(blob))

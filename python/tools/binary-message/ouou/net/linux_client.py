@@ -1,7 +1,7 @@
 import socket
 import errno
 from . import base_client
-from ouou.message import Header, Message
+from ..message import Header, Message
 
 class Client(base_client.BaseClient):
     def __init__(self, loop):

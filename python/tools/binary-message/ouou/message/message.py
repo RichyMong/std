@@ -3,8 +3,8 @@ import zlib
 import re
 import collections
 from .const import *
-from ouou.util.basetypes import Byte, Char, UShort
-from ouou.util.stream import Reader
+from ..util.basetypes import Byte, Char, UShort
+from ..util.stream import Reader
 
 request_messages = {}
 response_messages = {}

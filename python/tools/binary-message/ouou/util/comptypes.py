@@ -1,5 +1,4 @@
 import struct
-from functools import reduce
 from .basetypes import *
 from .functions import *
 
