@@ -14,9 +14,12 @@ __all__ = [ 'Header', 'Message', 'MultipleMessage' ]
 
 Attribute = collections.namedtuple('Attribute', ['name', 'type', 'desc'])
 
+OptionalAttribute = collections.namedtuple('Attribute',
+                     ['name', 'type', 'desc', 'condition'])
+
 class DependentAttribute(object):
     '''
-    This class of attributes depend on the other attributes in the same target
+    This class of attributes depend on the other attributes in the same owner
     class. As a result, we need the host object when creating an instance of
     this class from a stream.
     '''
@@ -24,33 +27,25 @@ class DependentAttribute(object):
         raise NotImplementedError('')
 
     @classmethod
-    def fromstream(cls, reader, target, **kwargs):
+    def fromstream(cls, reader, owner, **kwargs):
         raise NotImplementedError('')
 
 class DependentFieldsAttribute(DependentAttribute):
     '''
     This class of attributes is like DependentAttribute. However, it needs
-    more information. We are not able to write it without the target.
+    more information. We are not able to write it without the owner.
     '''
-    def tobytes(self, target):
+    def tobytes(self, owner):
         raise NotImplementedError('')
 
 class BinaryObjectMeta(type):
-    def __new__(mcs, name, bases, attrs):
-        cls = type.__new__(mcs, name, bases, attrs)
-
-        cls._fields = {}
-
-        for x in attrs.get('attributes_info', []):
-            if x in cls._fields:
-                raise RuntimeError('duplicate attribute {}'.format(x.name))
-            cls._fields[x.name] = x.type
-
-        return cls
-
     def _fromstream(cls, reader, **kwargs):
         self = cls(**kwargs)
-        for (field, field_type, *_) in self.attributes_info:
+        for attr in cls.attributes_info:
+            field, field_type, *extra = attr
+            if isinstance(attr, OptionalAttribute) and not extra[1](self):
+                continue
+
             if issubclass(field_type, DependentAttribute):
                 dattr = field_type.fromstream(reader, self)
                 if dattr:
@@ -59,7 +54,7 @@ class BinaryObjectMeta(type):
                 try:
                     setattr(self, field, reader.read_type(field_type))
                 except Exception as e:
-                    print('processing message {}, attribute: {} error: {}'.format(cls.__name__, field, e))
+                    print('processing message {}, attribute: "{}", error: {}'.format(cls.__name__, field, e))
                     raise
 
         self.extra_parse(reader)
@@ -80,38 +75,46 @@ class BinaryObject(metaclass = BinaryObjectMeta):
     def __init__(self, iterable = None, **kwargs):
         '''
         The object could be initialized from an iterable object as well as
-        keyword arguments.
+        keyword arguments. kwargs may contain 'owner' to specify which object
+        owns this object.
         '''
         if iterable:
             for (i, arg) in enumerate(iterable):
                 attr = self.attributes_info[i]
                 setattr(self, attr.name, arg)
+        self.owner = kwargs.get('owner', None)
 
-        for name, cls in self._fields.items():
-            if not hasattr(self, name):
-                setattr(self, name, kwargs.get(name, cls()))
+        for attr in self.attributes_info:
+            if isinstance(attr, Attribute) and not hasattr(self, attr.name):
+                setattr(self, attr.name, kwargs.get(attr.name, attr.type()))
+
+    @property
+    def attributes(self):
+        for attr in self.attributes_info:
+            if not isinstance(attr, OptionalAttribute) or attr.condition(self):
+                yield attr
 
     def __iter__(self):
-        s = []
-        for name, cls in self._fields.items():
-            if hasattr(self, name):
-                s.append(getattr(self, name))
-        return iter(s)
+        for attr in self.attributes:
+            yield getattr(self, attr.name)
 
     def __getitem__(self, idx):
         return getattr(self, self.attributes_info[idx].name, None)
 
     def __eq__(self, other):
         if type(self) is type(other):
-            for name, cls in self._fields.items():
-                v1, v2 = getattr(self, name), getattr(other, name)
-                if issubclass(cls, BinaryObject):
-                    v1, v2 = tuple(v1, v2)
+            for (attr1, attr2) in zip(self.attributes, other.attributes):
+                v1, v2 = map(lambda x : getattr(x, attr1.name), (self, other))
+                if not isinstance(v1, attr1.type):
+                    v1 = attr1.type(v1)
+                if not isinstance(v2, attr1.type):
+                    v2 = attr1.type(v2)
                 if v1 != v2:
                     return False
+
         elif isinstance(other, collections.Iterable):
-            for i in range(min(len(self.attributes_info), len(other))):
-                if self[i] != other[i]:
+            for v1, v2 in zip(self, other):
+                if v1 != v2:
                     return False
         else:
             return False
@@ -120,38 +123,31 @@ class BinaryObject(metaclass = BinaryObjectMeta):
     def __str__(self):
         r = ''
 
-        for i, (name, _, desc) in enumerate(self.attributes_info):
+        for i, attr in enumerate(self.attributes):
             if i: r += PRINT_PREFIX
+            if attr.desc: r += '{}: '.format(attr.desc)
+            r += '{}'.format(getattr(self, attr.name))
 
-            if desc:
-                r += '{}: {}'.format(desc, getattr(self, name))
-            else:
-                r += '{}'.format(getattr(self, name))
-
-        if not self.attributes_info:
-            return 'Empty'
-
-        return r
+        return r or 'Empty'
 
     def body2bytes(self):
         b = b''
         cls_name = type(self).__name__
-        for (field, field_type, *_) in self.attributes_info:
-            v = getattr(self, field)
+        for attr in self.attributes:
+            v = getattr(self, attr.name)
             if v is None:
-                raise ValueError('{}.{} is not set'.format( cls_name, field))
+                raise ValueError('{}.{} is not set'.format(cls_name, attr.name))
             try:
-                if not isinstance(v, field_type):
-                    v = field_type(v)
+                if not isinstance(v, attr.type):
+                    v = attr.type(v)
 
-                if issubclass(field_type, DependentFieldsAttribute):
+                if issubclass(attr.type, DependentFieldsAttribute):
                     b += v.tobytes(self)
                 else:
                     b += v.tobytes()
             except Exception as e:
                 raise RuntimeError("attribue '{}' in class {}: {}".format(
-                       field, cls_name, e))
-
+                       attr.name, cls_name, e))
         return b
 
     def tobytes(self):
@@ -159,8 +155,8 @@ class BinaryObject(metaclass = BinaryObjectMeta):
 
     def size(self):
         total_size = 0
-        for (field, field_type, *_) in self.attributes_info:
-            total_size += getattr(self, field).size()
+        for x in self:
+            total_size += x.size()
 
         return total_size
 
@@ -190,7 +186,7 @@ class Header(BinaryObject):
         super().__init__(**kwargs)
         self.prefix = '{'
         self.msg_id = kwargs.get('msg_id', 0)
-        self.c2s = kwargs.get('c2s', True)
+        self.c2s = kwargs.get('c2s', False)
 
     def __str__(self):
         attr = (self.flag << 8) & self.unused
@@ -198,9 +194,8 @@ class Header(BinaryObject):
                     self.prefix, self.msg_id, attr, self.payload_size
                 )
 
-    @property
-    def msg_size(self):
-        return self.size() + self.payload_size + len(MSG_TAIL)
+    def body_size(self):
+        return self.payload_size + len(MSG_TAIL_BYTES)
 
     def size(self):
         return self.type_size
@@ -227,6 +222,14 @@ class Header(BinaryObject):
         return ((not self.c2s and self.flag & MSG_FLAG_COMPRESSED) or
                 (self.c2s and self.need_compress()))
 
+    def get_owner_cls(self):
+        if self.c2s:
+            return request_messages[self.msg_id]
+        elif self.is_push_msg():
+            return push_messages[self.msg_id]
+        else:
+            return response_messages[self.msg_id]
+
 class Message(BinaryObject):
     MSG_ID = 0
 
@@ -238,7 +241,10 @@ class Message(BinaryObject):
         return not self.header.payload_size
 
     def size(self):
-        return self.header.size() + self.header.payload_size + len(MSG_TAIL)
+        n = self.header.size() + self.header.payload_size
+        if self.owner is None:
+            n += len(MSG_TAIL_BYTES)
+        return n
 
     def is_push_msg(self):
         return self.header.is_push_msg()
@@ -255,19 +261,29 @@ class Message(BinaryObject):
 
     def tobytes(self, compress = False):
         body = self.body2bytes()
-        if compress:
+        if compress and self.owner is None:
             self.header.set_compressed()
             self.header.set_need_compress()
             cbody = zlib.compress(body)
             body = Short.pack(len(body)) + Short.pack(len(cbody)) + cbody
         self.header.payload_size = len(body)
-        return self.header.tobytes() + body + MSG_TAIL
+        if self.owner is None:
+            return self.header.tobytes() + body + MSG_TAIL_BYTES
+        else:
+            return self.header.tobytes() + body
 
     def __str__(self):
-        return type(self).__name__ + PRINT_PREFIX + super().__str__()
+        if self.empty():
+            s = self.header.get_owner_cls().__name__
+        else:
+            s = type(self).__name__
+
+        if self.is_push_msg():
+            s += ' [P]'
+        return s + PRINT_PREFIX + super().__str__()
 
     @staticmethod
-    def fromstream(reader, header, c2s = True):
+    def fromstream(reader, header, c2s = False):
         '''
         Parse a message from the specified buffer. The buffer must be at least
         header.payload_size bytes.
@@ -282,14 +298,8 @@ class Message(BinaryObject):
             assert len(buf) == orig_len
             reader.reset(buf)
 
-        cls = None
-        if c2s:
-            cls = request_messages[header.msg_id]
-        elif header.is_push_msg():
-            cls = push_messages[header.msg_id]
-        else:
-            cls = response_messages[header.msg_id]
-        return cls._fromstream(reader, header = header)
+        return header.get_owner_cls()._fromstream(reader,
+                  header = header, c2s = c2s)
 
     @staticmethod
     def allfromstream(reader, c2s = True):
@@ -298,7 +308,7 @@ class Message(BinaryObject):
             return None
 
         h = Header.fromstream(reader, c2s = c2s)
-        if n < Header.type_size + h.payload_size + 1:
+        if n < Header.type_size + h.payload_size:
             return None
 
         return Message.fromstream(reader, h, c2s = c2s)
@@ -309,10 +319,16 @@ class Message(BinaryObject):
         Parse a message from the specified buffer. The buffer must be at least
         header.payload_size bytes.
         '''
+        if buf[-1] == ord('}'):
+            buf = buf[:-1]
+
         return Message.fromstream(Reader(buf), header, c2s = c2s)
 
     @staticmethod
     def allfrombytes(buf, c2s = True):
+        if buf and buf[-1] == ord('}'):
+            buf = buf[:-1]
+
         return Message.allfromstream(Reader(buf), c2s = c2s)
 
 class MessageMeta(BinaryObjectMeta):
@@ -337,34 +353,28 @@ class MultipleMessage(Message, metaclass = MessageMeta):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.messages = []
+        self.attributes_info = []
 
-    def add_message(self, message):
-        self.messages.append(message)
+    def add_message(self, m):
+        if m.owner is None:
+            import copy
+            m = copy.deepcopy(m)
+            m.owner = self
+        name = 'submsg_{}'.format(len(self.attributes_info) + 1)
+        self.attributes_info.append(Attribute(name, type(m), name))
+        setattr(self, name, m)
 
     def __iter__(self):
-        return iter(self.messages)
-
-    def body2bytes(self):
-        b = b''
-        for m in self.messages:
-            body = m.body2bytes()
-            m.header.payload_size = len(body)
-            b += m.header.tobytes() + body
-        return b
-
-    def __str__(self):
-        r = 'MultipleMessage: {}'.format(self.MSG_ID)
-        for m in self.messages:
-            r += PRINT_PREFIX + str(m)
-        return r
+        for attr in self.attributes_info:
+            yield getattr(self, attr.name)
 
     @classmethod
     def _fromstream(cls, reader, **kwargs):
         self = cls(**kwargs)
         while reader.available() >= Header.type_size:
-            m = Message.allfromstream(reader)
+            m = Message.allfromstream(reader, owner = self,
+                                      c2s = kwargs.get('c2s', True))
             if not m:
                 raise RuntimeError('incomplete {} message'.format(cls.MSG_ID))
-            self.messages.append(m)
+            self.add_message(m)
         return self

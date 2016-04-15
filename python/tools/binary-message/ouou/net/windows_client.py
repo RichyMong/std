@@ -3,18 +3,18 @@ import socket
 from . import base_client
 from ..message import Header, Message
 
+LOGGER = base_client.LOGGER
+
 class Client(base_client.BaseClient):
-    def __init__(self, loop):
+    def __init__(self, loop = None):
         super().__init__(loop)
         self._recv_header = None
 
-    def connect(self, host, port):
-        super()._connect_check()
-
-        f = self._loop.sock_connect(self._sock, (host, port))
+    def async_connect(self, server):
+        f = self._loop.sock_connect(self._sock, server)
         f.add_done_callback(self._connection_made)
 
-    def send_data(self, data):
+    def async_send_data(self, data):
         f = self._loop.sock_sendall(self._sock, data)
         f.add_done_callback(self._data_sent)
 
@@ -22,7 +22,7 @@ class Client(base_client.BaseClient):
         try:
             r = of.result()
         except Exception as e:
-            base_client.LOGGER.error('connection failed {}'.format(e))
+            LOGGER.error('failed to connect: {}'.format(e))
             self._close()
         else:
             self.change_state(self.CONNECTED)
@@ -43,14 +43,10 @@ class Client(base_client.BaseClient):
         if not len(data):
             self._close()
         elif not self._recv_header:
-            assert len(data) == Header.type_size
-
             self._recv_header = Header.frombytes(data, c2s = False)
-            f = self._loop.sock_recv(self._sock, self._recv_header.msg_size)
+            f = self._loop.sock_recv(self._sock, self._recv_header.body_size())
             f.add_done_callback(self._data_received)
         else:
-            assert len(data) == self._recv_header.msg_size
-
             p = Message.frombytes(data, self._recv_header, c2s = False)
             self.handle_message(p)
             self._recv_header = None

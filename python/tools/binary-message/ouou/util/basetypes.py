@@ -5,12 +5,6 @@ __all__ = [ 'Char', 'Byte', 'Short', 'UShort', 'Int', 'DigitInt', 'UInt',
 
 BYTE_ORDER = '<'
 
-def tobytes(obj):
-    if isinstance(obj, str):
-        return struct.pack(obj.pack_fmt, obj.encode())
-    else:
-        return struct.pack(BYTE_ORDER + obj.pack_fmt, obj)
-
 def size(obj):
     '''
     Though the sizes of most of the types are fixed, we use an instance
@@ -23,7 +17,7 @@ def size(obj):
 class BaseTypeMeta(type):
     def __new__(meta, classname, supers, classdict):
         cls = type.__new__(meta, classname, supers, classdict)
-        cls.tobytes = tobytes
+        cls.tobytes = lambda x : type(x).pack(x)
         cls.type_size = struct.calcsize(cls.pack_fmt)
         cls.size = size
 
@@ -112,4 +106,4 @@ class LargeInt(int, metaclass = BaseTypeMeta):
         return 4
 
     def tobytes(self):
-        return Int(self.value).tobytes()
+        return Int.pack(self.value)

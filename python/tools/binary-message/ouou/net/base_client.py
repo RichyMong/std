@@ -2,7 +2,7 @@ import asyncio
 import socket
 import errno
 import logging
-import ouou.message
+from emoney import message
 from datetime import datetime
 from ..util.basetypes import Char
 
@@ -24,11 +24,11 @@ class BaseClient(object):
     CLOSING = 4
 
     HEARTBEAT_PERIOD = 30
-    HeartBeat = ouou.message.Request_5517
+    HeartBeat = message.Request_5517
 
     current_client_id = 0
 
-    def __init__(self, loop):
+    def __init__(self, loop = None):
         self.cid = BaseClient.next_cid()
         self.state = BaseClient.CLOSED
         self._loop = loop
@@ -37,8 +37,64 @@ class BaseClient(object):
         self._state_callback = default_state_callback
         self._waited_response = []
         self._waited_push = set()
+        self._ka_handle = None
+        self._recv_msg = None
+        self._waited_future = None
+
+    def connect(self, address):
+        '''
+        address should be a (host, port) tuple
+        '''
+        self._setup_connection()
+        if self._loop:
+            self.async_connect(address)
+        else:
+            self._sock.connect(address)
+
+    def async_connect(self, host, port):
+        raise NotImplementedError('')
 
     def send_data(self, data):
+        if self._loop:
+            self.async_send_data(data)
+        else:
+            self._sock.sendall(data)
+
+    def recv_nbytes(self, n):
+        data = b''
+        while len(data) < n:
+            data += self._sock.recv(n - len(data))
+        return data
+
+    def recv_message(self):
+        head = self.recv_nbytes(message.Header.type_size)
+        if not len(head):
+            self._close()
+            return None
+        header = message.Header.frombytes(head)
+        body = self.recv_nbytes(header.body_size())
+        return message.Message.frombytes(body, header, c2s = False)
+
+    def send_and_receive(self, *msg):
+        if self._loop:
+            raise RuntimeError('blocked in event loop')
+
+        if len(msg) > 1:
+            multiple = message.MultipleMessage()
+            expected_cnt = 1
+            for m in msg:
+                multiple.add_message(m)
+                expected_cnt += 1
+            self.send_data(multiple.tobytes())
+            resps = []
+            while len(resps) < expected_cnt:
+                resps.append(self.recv_message())
+            return resps
+        else:
+            self._sock.sendall(msg[0].tobytes())
+            return self.recv_message()
+
+    def async_send_data(self, data):
         raise NotImplementedError('do not use this class directly')
 
     def is_waiting_for_push(self):
@@ -67,7 +123,7 @@ class BaseClient(object):
         assert len(msgs)
 
         if len(msgs) > 1:
-            multiple = ouou.message.MultipleMessage()
+            multiple = message.MultipleMessage()
             for m in msgs:
                 self._add_waited_message(m)
                 multiple.add_message(m)
@@ -87,9 +143,12 @@ class BaseClient(object):
                 LOGGER.error('{} waiting for {}'.format(self, self._waited_response))
 
         if msg_id != BaseClient.HeartBeat.MSG_ID or waiting:
-            self._message_callback(self, msg)
+            if self._waited_future:
+                self._waited_future.set_result(msg)
+            else:
+                self._message_callback(self, msg)
 
-    def _connect_check(self):
+    def _setup_connection(self):
         if self.state == BaseClient.CONNECTED:
             raise RuntimeError('{} connected to {}'.format(
                        self, self._sock.getpeername())
@@ -109,21 +168,24 @@ class BaseClient(object):
         self._close()
 
     def keep_alive(self):
-        LOGGER.info('keep alive')
         msg = BaseClient.HeartBeat()
         msg.pid = 1
         self.send_message(msg)
-        self._loop.call_later(self.HEARTBEAT_PERIOD, self.keep_alive)
+        if self._loop:
+            self._ka_handle = self._loop.call_later(self.HEARTBEAT_PERIOD, self.keep_alive)
 
     def change_state(self, new_state):
         self._state_callback(self, new_state)
         self.state = new_state
         if new_state == BaseClient.CONNECTED:
-            self._loop.call_later(self.HEARTBEAT_PERIOD, self.keep_alive)
+            if self._loop:
+                self._ka_handle = self._loop.call_later(self.HEARTBEAT_PERIOD, self.keep_alive)
 
     def _close(self):
         self.change_state(BaseClient.CLOSED)
         self._sock.close()
+        if self._ka_handle: self._ka_handle.cancel()
+        if self._waited_future: self._waited_future.cancel()
 
     def __repr__(self):
         return 'Client<{}>'.format(self.cid)

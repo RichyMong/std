@@ -1,4 +1,4 @@
-﻿from ouou.util import Char
+﻿from emoney.util import Char
 
 MSG_FLAG_COMPRESSED   = 0x02
 MSG_FLAG_REQ_COMPRESS = 0x04
@@ -20,7 +20,11 @@ REQ_TYPE_MODULE = 2
 REQ_TYPE_GLOBAL_QUOTE = 3
 REQ_TYPE_MARKET_MOULE = 4
 
-MSG_TAIL = Char.pack('}')
+REQ_FLAG_NR_ROOTS = 0
+REQ_FLAG_START_TIME = 1
+
+MSG_DELIM = '{'
+MSG_TAIL_BYTES = Char.pack('}')
 
 PRINT_PREFIX = '\n\t'
 

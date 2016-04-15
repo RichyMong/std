@@ -2,7 +2,7 @@ import zlib
 import collections
 from functools import reduce
 from .import message
-from .message import Attribute, BinaryObject, DependentAttribute, DependentFieldsAttribute
+from .message import Attribute, OptionalAttribute, BinaryObject, DependentAttribute, DependentFieldsAttribute
 from .const import *
 from ..util.stream import Reader
 from ..util import *
@@ -15,14 +15,27 @@ __all__ = [
             'Response_5517', 'Response_5518',
            ]
 
+cache_stock_display = {}
+
 def VarArray(sizefunc, elem_cls):
+    '''
+    We may inherit BinaryObject and use the owner to fetch the size instead
+    of sizefunc. If we did that, it would be impossible to use a class with
+    more than one VayArray attribute.
+    '''
     class Wrapper(TypeList(elem_cls), DependentAttribute):
         @classmethod
-        def fromstream(cls, reader, target, **kwargs):
+        def fromstream(cls, reader, owner, **kwargs):
             self = cls(**kwargs)
-            for i in range(sizefunc(target)):
+            for i in range(sizefunc(owner)):
                 self.append(reader.read_type(elem_cls))
             return self
+
+        def __getattr__(self, attr):
+            if len(self) > 1:
+                raise RuntimeError('only support one elment array')
+
+            return getattr(self[0], attr)
 
     return Wrapper
 
@@ -34,46 +47,48 @@ def VarFields(fields, iterfunc):
     '''
     class Wrapper(list, DependentFieldsAttribute):
         @staticmethod
-        def get_data_type(target):
-            attributes_info = tuple(fields[x - 1] for x in iterfunc(target))
+        def get_data_type(owner):
+            '''
+            We may scan the fields directly but we want to have the same
+            behaviour as all the other binary objects.
+            '''
+            attributes_info = tuple(fields[x - 1] for x in iterfunc(owner))
             return message.create_class('VarFieldsWrapper', attributes_info)
 
         @classmethod
-        def fromstream(cls, reader, target, **kwargs):
-            self = cls(**kwargs)
-            self.target = target
-            w = self.get_data_type(target).fromstream(reader)
-            for v in w.attributes_info:
-                self.append(getattr(w, v.name))
+        def fromstream(cls, reader, owner, **kwargs):
+            w = Wrapper.get_data_type(owner).fromstream(reader)
+            self = cls(w)
+            self.owner = owner
             return self
 
-
-        def tobytes(self, target):
-            return self.get_data_type(target)(self).tobytes()
+        def tobytes(self, owner):
+            return self.get_data_type(owner)(self).tobytes()
 
         def __str__(self):
-            s = str(self.get_data_type(self.target)(self))
+            s = str(self.get_data_type(self.owner)(self))
             return s
 
     return Wrapper
 
 def VarFieldsVector(size_cls, fields, iterfunc):
     class Wrapper(list, DependentFieldsAttribute):
-        def get_data_type(self, target):
+        def get_data_type(self, owner):
             if not getattr(self, 'data_type', None):
-                attributes_info = tuple(fields[x - 1] for x in iterfunc(target))
-                self.data_type = message.create_class('VarFieldsWrapper',
+                attributes_info = tuple(fields[x - 1] for x in iterfunc(owner))
+                self.data_type = message.create_class('VarFieldsVector_data_type',
                                     attributes_info)
             return self.data_type
 
         @classmethod
-        def fromstream(cls, reader, target, **kwargs):
+        def fromstream(cls, reader, owner, **kwargs):
             self = cls(**kwargs)
-            data_type = self.get_data_type(target)
+            self.fields = tuple(x for x in iterfunc(owner))
+            data_type = self.get_data_type(owner)
             return Vector(size_cls, data_type).fromstream(reader)
 
-        def tobytes(self, target):
-            data_type = self.get_data_type(target)
+        def tobytes(self, owner):
+            data_type = self.get_data_type(owner)
             b = size_cls.pack(len(self))
             for x in self:
                 '''
@@ -225,7 +240,35 @@ class TimeSharing(message.BinaryObject):
 class Response_5500(message.MultipleMessage, metaclass = ResponseMeta):
     pass
 
+def MarketPrice(market_func, rep_cls = UInt, extra = 0):
+    DIGITS = { 'HK' : 3, 'NASDAQ' : 2 }
+    REPR_DIGIT = max(DIGITS.values())
+    class Wrapper(rep_cls, DependentAttribute):
+        @classmethod
+        def fromstream(cls, reader, owner):
+            v = rep_cls.fromstream(reader)
+            market = market_func(owner)
+            for i in range(DIGITS[market], REPR_DIGIT):
+                v *= 10
+            cls.market = market
+            return cls(v)
+
+        def __str__(self):
+            if hasattr(self, 'market'):
+                t = self
+                for i in range(0, REPR_DIGIT):
+                    t /= 10
+                return '{:.{}f}'.format(t, DIGITS[self.market])
+            else:
+                return super().__str__()
+    return Wrapper
+
 class Response_5501(message.Message, metaclass = ResponseMeta):
+    Price = MarketPrice(lambda x : x.stock_id.partition('|')[0])
+
+    # American markets use two digits int. However, it's tough for us to
+    # deal with this situation. We need the stock_id or market_code to
+    # know which market is returned and it may not be required.
     quotation_response_fields = (
         Attribute('date_time', Int, '行情日期和时间'),
         Attribute('stock_id', String, '唯一标识'),
@@ -234,11 +277,11 @@ class Response_5501(message.Message, metaclass = ResponseMeta):
         Attribute('market_code', UShort, '市场代码'),
         Attribute('market_type', UShort, '市场类别'),
         Attribute('trade_flag', Byte, '交易标示'),
-        Attribute('close_price', UInt, '昨收价'),
-        Attribute('open_price', DigitInt(3), '开盘价'),
-        Attribute('highest_price', DigitInt(3), '最高价'),
-        Attribute('lowest_price', DigitInt(3), '最低价'),
-        Attribute('latest_price', DigitInt(3), '最新价'),
+        Attribute('close_price', Price, '昨收价'),
+        Attribute('open_price', Price, '开盘价'),
+        Attribute('highest_price', Price, '最高价'),
+        Attribute('lowest_price', Price, '最低价'),
+        Attribute('latest_price', Price, '最新价'),
         Attribute('volume', LargeInt, '成交量'),
         Attribute('amount', LargeInt, '成交额'),
         Attribute('trade_count', UInt, '成交笔数'),
@@ -281,20 +324,22 @@ class Response_5501(message.Message, metaclass = ResponseMeta):
     )
 
     attributes_info = (
-        Attribute('request_extra_data', Byte, '同时请求其他数据'),
+        Attribute('request_extra', Byte, '同时请求其他数据'),
         Attribute('fields', ByteVector, '应答字段'),
         Attribute('return_data', VarFields(quotation_response_fields,
                             lambda self : self.fields), ''),
-        Attribute('extra_data', VarArray(lambda self : 1 if self.request_extra_data else 0, TimeTrend),
-                             '同时请求走势/分时成交/K线附加数据'),
+        OptionalAttribute('extra_data',TimeTrend, '同时请求附加数据',
+                          lambda self : self.request_extra),
     )
 
 class Response_5502(message.Message, metaclass = ResponseMeta):
+    all_fields_info = Response_5501.quotation_response_fields
+
     attributes_info = (
         Attribute('pid', Byte, '协议标识'),
         Attribute('fields', ByteVector, '返回字段ID'),
         Attribute('total_num', UShort, '总数据个数'),
-        Attribute('return_data', VarFieldsVector(UShort, Response_5501.quotation_response_fields,
+        Attribute('return_data', VarFieldsVector(UShort, all_fields_info,
                           lambda self : self.fields), '返回数据')
     )
 
@@ -336,8 +381,8 @@ class Response_5504(message.Message, metaclass = ResponseMeta):
 
 class Response_5505(message.Message, metaclass = ResponseMeta):
     attributes_info = (
-          Attribute('server_date', Int, '服务器日期'),
-          Attribute('server_time', Int, '服务器时间'),
+          Attribute('date', Int, '服务器日期'),
+          Attribute('time', Int, '服务器时间'),
     )
 
 class Response_5506(message.Message, metaclass = ResponseMeta):
@@ -390,7 +435,7 @@ class Response_5511(message.Message, metaclass = ResponseMeta):
             Attribute('open_price', UInt, '开盘价'),
             Attribute('highest_price', UInt, '最高价'),
             Attribute('lowest_price', UInt, '最低价'),
-            Attribute('latest_price', Int, '最新价'),
+            Attribute('latest_price', MarketPrice(lambda x : x.stock_code()), '最新价'),
             Attribute('volume', LargeInt, '成交量'),
             Attribute('amount', LargeInt, '成交额'),
             Attribute('trade_count', UInt, '成交笔数'),
@@ -588,7 +633,7 @@ class Response_5513(message.Message, metaclass = ResponseMeta):
     attributes_info = (
         Attribute('pid', UShort, '协议标识'),
         Attribute('stock_id', String, '代码唯一标识'),
-        Attribute('timerend', TimeTrend, '分时走势'),
+        Attribute('data', TimeTrend, '分时走势'),
     )
 
 class Response_5514(message.Message, metaclass = ResponseMeta):
@@ -697,8 +742,8 @@ class Response_5518(message.Message, metaclass = ResponseMeta):
     attributes_info = (
         Attribute('pid', UShort, '协议标识'),
         Attribute('result', Byte, 'MD5校验结果'),
-        Attribute('broker_data', VarArray(lambda self : 1 if self.result else 0,
-                        BrokerData), '经纪行数据')
+        OptionalAttribute('broker_data', BrokerData, '经纪行数据',
+                        lambda self : self.result)
     )
 
 class Push_5514(message.Message, metaclass = PushMeta):
@@ -708,7 +753,7 @@ class Push_5514(message.Message, metaclass = PushMeta):
           Attribute('fields', ByteVector, '应答字段ID'),
           Attribute('need_clear_local', Byte, '是否需要清除本地数据'),
           Attribute('total_num', UShort, '数据总数'),
-          Attribute('return_num', UShort, '返回数据总数'),
+          Attribute('return_data', VarFieldsVector(UShort, Response_5503.all_fields, lambda self : self.fields), '分时成交数据'),
     )
 
 class Push_5516(message.Message, metaclass = PushMeta):

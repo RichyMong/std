@@ -36,7 +36,7 @@ def EncodedString(encoding):
 
         def tobytes(self):
             s = self.encode(encoding = encoding)
-            b = Short(len(s)).tobytes()
+            b = Short.pack(len(s))
             return b + struct.pack('{}s'.format(len(s)), s)
 
     return WrapperString
@@ -110,7 +110,7 @@ def Vector(size_cls, elem_cls):
             return size_cls.type_size + super().size()
 
         def tobytes(self):
-            return size_cls(len(self)).tobytes() + super().tobytes()
+            return size_cls.pack(len(self)) + super().tobytes()
 
     return Wrapped
 

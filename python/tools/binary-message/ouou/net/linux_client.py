@@ -1,24 +1,25 @@
+import os
 import socket
 import errno
 from . import base_client
 from ..message import Header, Message
 
+LOGGER = base_client.LOGGER
+
 class Client(base_client.BaseClient):
-    def __init__(self, loop):
+    def __init__(self, loop = None):
         super().__init__(loop)
         self._buf = b''
 
-    def connect(self, host, port):
-        super()._connect_check()
+    def async_connect(self, addr):
         self._sock.setblocking(False)
-        addr = (host, port)
         ec = self._sock.connect_ex(addr)
         if ec == errno.EINPROGRESS:
             self._loop.add_writer(self._sock.fileno(), self._connection_made)
         else:
-            base_client.LOGGER.error('connection to {} error {}'.format(addr, ec))
+            LOGGER.error('connect to {}: {}'.format(addr, os.strerror(ec)))
 
-    def send_data(self, data):
+    def async_send_data(self, data):
         self._sock.sendall(data)
 
     def _close(self):
@@ -27,6 +28,10 @@ class Client(base_client.BaseClient):
         super()._close()
 
     def _data_ready(self):
+        '''
+        For performance concern, we do not call self.recv_message() here.
+        We may benefit from this if multiple messages are sent.
+        '''
         try:
             data = self._sock.recv(65536)
         except socket.error as e:
@@ -53,5 +58,5 @@ class Client(base_client.BaseClient):
             self.change_state(self.CONNECTED)
             self._loop.add_reader(self._sock.fileno(), self._data_ready)
         else:
-            base_client.LOGGER.error('connection error: {}'.format(e))
+            LOGGER.error('connection: {}'.format(os.strerror(e)))
             self._close()

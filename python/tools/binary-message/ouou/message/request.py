@@ -28,7 +28,7 @@ class Request_5500(message.MultipleMessage, metaclass = RequestMeta):
 class Request_5501(Message, metaclass = RequestMeta):
     attributes_info = (
         Attribute('stock_id', String, '代码唯一标示'),
-        Attribute('extra_data', Byte, '同时请求其他数据'),
+        Attribute('request_extra', Byte, '同时请求其他数据'),
         Attribute('fields', Vector(Byte, Byte), '请求字段'),
         Attribute('date_time', UInt, '请求开始时间'),
         Attribute('extra_fields', Vector(Byte, Byte), '请求附加字段')
