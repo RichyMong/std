@@ -74,7 +74,7 @@ def TypeList(elem_cls):
             else:
                 r = '共 {} 个'.format(len(self))
                 for i, x in enumerate(self):
-                    r += '{p}{sep}{no}{sep}{p}{x}'.format(p = '\n\t',
+                    r += '{p}{sep}{no}{sep}{p}{x}'.format(p = '\n    ',
                              sep = 30 * '-', no = i + 1, x = x)
                 return r
 

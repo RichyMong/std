@@ -2,7 +2,7 @@ import zlib
 import collections
 from functools import reduce
 from .import message
-from .message import Attribute, OptionalAttribute, BinaryObject, DependentAttribute, DependentFieldsAttribute
+from .message import Attribute, OptionalAttribute, BinaryObject, ReadDepAttr, DepAttr
 from .const import *
 from ..util.stream import Reader
 from ..util import *
@@ -23,7 +23,7 @@ def VarArray(sizefunc, elem_cls):
     of sizefunc. If we did that, it would be impossible to use a class with
     more than one VayArray attribute.
     '''
-    class Wrapper(TypeList(elem_cls), DependentAttribute):
+    class Wrapper(TypeList(elem_cls), ReadDepAttr):
         @classmethod
         def fromstream(cls, reader, owner, **kwargs):
             self = cls(**kwargs)
@@ -45,7 +45,7 @@ def VarFields(fields, iterfunc):
     be a callable with one parameter as the object this class is embedded in.
     The fields is an iterable object of type Attribute.
     '''
-    class Wrapper(list, DependentFieldsAttribute):
+    class Wrapper(list, DepAttr):
         @staticmethod
         def get_data_type(owner):
             '''
@@ -72,7 +72,11 @@ def VarFields(fields, iterfunc):
     return Wrapper
 
 def VarFieldsVector(size_cls, fields, iterfunc):
-    class Wrapper(list, DependentFieldsAttribute):
+    class Wrapper(list, DepAttr):
+        '''
+        Use list to represent the information to make it easy to create an
+        instance and append tuples to it as well as read from a stream.
+        '''
         def get_data_type(self, owner):
             if not getattr(self, 'data_type', None):
                 attributes_info = tuple(fields[x - 1] for x in iterfunc(owner))
@@ -243,7 +247,7 @@ class Response_5500(message.MultipleMessage, metaclass = ResponseMeta):
 def MarketPrice(market_func, rep_cls = UInt, extra = 0):
     DIGITS = { 'HK' : 3, 'NASDAQ' : 2 }
     REPR_DIGIT = max(DIGITS.values())
-    class Wrapper(rep_cls, DependentAttribute):
+    class Wrapper(rep_cls, ReadDepAttr):
         @classmethod
         def fromstream(cls, reader, owner):
             v = rep_cls.fromstream(reader)
@@ -670,11 +674,12 @@ class Response_5515(message.Message, metaclass = ResponseMeta):
                         level += 1
 
                 r = ''
+                width = len(str(len(levels)))
                 for i in sorted(levels.keys()):
-                    beg = '\t第{}档: '.format(CHINSE_NUMBER[i])
-                    r += PRINT_PREFIX + beg
+                    beg = INDENT + '{:{}}: '.format(i, width)
+                    r += PRINT_PREFIX +  beg
                     for j in range(0, len(levels[i]), 8):
-                        if j: r += PRINT_PREFIX + len(beg.encode()) * ' '
+                        if j: r += PRINT_PREFIX + len(beg) * ' '
                         r += ' '.join(str(v) for v in levels[i][j:j+8])
 
                 return r

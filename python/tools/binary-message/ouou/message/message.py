@@ -17,26 +17,23 @@ Attribute = collections.namedtuple('Attribute', ['name', 'type', 'desc'])
 OptionalAttribute = collections.namedtuple('Attribute',
                      ['name', 'type', 'desc', 'condition'])
 
-class DependentAttribute(object):
-    '''
-    This class of attributes depend on the other attributes in the same owner
-    class. As a result, we need the host object when creating an instance of
-    this class from a stream.
-    '''
-    def tobytes(self):
-        raise NotImplementedError('')
-
+class ReadDepAttr(object):
     @classmethod
     def fromstream(cls, reader, owner, **kwargs):
         raise NotImplementedError('')
 
-class DependentFieldsAttribute(DependentAttribute):
-    '''
-    This class of attributes is like DependentAttribute. However, it needs
-    more information. We are not able to write it without the owner.
-    '''
+class WriteDepAttr(object):
     def tobytes(self, owner):
         raise NotImplementedError('')
+
+class DepAttr(ReadDepAttr, WriteDepAttr):
+    '''
+    Actually, if how to write the attribute depends on the owner, it's absolute
+    that the read also depends on the stream.
+    '''
+
+class ParseError(Exception):
+    ''''''
 
 class BinaryObjectMeta(type):
     def _fromstream(cls, reader, **kwargs):
@@ -46,7 +43,7 @@ class BinaryObjectMeta(type):
             if isinstance(attr, OptionalAttribute) and not extra[1](self):
                 continue
 
-            if issubclass(field_type, DependentAttribute):
+            if issubclass(field_type, ReadDepAttr):
                 dattr = field_type.fromstream(reader, self)
                 if dattr:
                     setattr(self, field, dattr)
@@ -54,8 +51,8 @@ class BinaryObjectMeta(type):
                 try:
                     setattr(self, field, reader.read_type(field_type))
                 except Exception as e:
-                    print('processing message {}, attribute: "{}", error: {}'.format(cls.__name__, field, e))
-                    raise
+                    raise ParseError('{} - attribute: "{}", error: {}'.format(
+                             cls.__name__, field, e))
 
         self.extra_parse(reader)
 
@@ -102,23 +99,10 @@ class BinaryObject(metaclass = BinaryObjectMeta):
         return getattr(self, self.attributes_info[idx].name, None)
 
     def __eq__(self, other):
-        if type(self) is type(other):
-            for (attr1, attr2) in zip(self.attributes, other.attributes):
-                v1, v2 = map(lambda x : getattr(x, attr1.name), (self, other))
-                if not isinstance(v1, attr1.type):
-                    v1 = attr1.type(v1)
-                if not isinstance(v2, attr1.type):
-                    v2 = attr1.type(v2)
-                if v1 != v2:
-                    return False
-
-        elif isinstance(other, collections.Iterable):
-            for v1, v2 in zip(self, other):
-                if v1 != v2:
-                    return False
+        if isinstance(other, collections.Iterable):
+            return tuple(self) == tuple(other)
         else:
             return False
-        return True
 
     def __str__(self):
         r = ''
@@ -141,7 +125,7 @@ class BinaryObject(metaclass = BinaryObjectMeta):
                 if not isinstance(v, attr.type):
                     v = attr.type(v)
 
-                if issubclass(attr.type, DependentFieldsAttribute):
+                if issubclass(attr.type, WriteDepAttr):
                     b += v.tobytes(self)
                 else:
                     b += v.tobytes()
@@ -283,7 +267,7 @@ class Message(BinaryObject):
         return s + PRINT_PREFIX + super().__str__()
 
     @staticmethod
-    def fromstream(reader, header, c2s = False):
+    def fromstream(reader, header):
         '''
         Parse a message from the specified buffer. The buffer must be at least
         header.payload_size bytes.
@@ -299,10 +283,10 @@ class Message(BinaryObject):
             reader.reset(buf)
 
         return header.get_owner_cls()._fromstream(reader,
-                  header = header, c2s = c2s)
+                  header = header)
 
     @staticmethod
-    def allfromstream(reader, c2s = True):
+    def allfromstream(reader, c2s = False):
         n = reader.available()
         if n < Header.type_size:
             return None
@@ -311,10 +295,10 @@ class Message(BinaryObject):
         if n < Header.type_size + h.payload_size:
             return None
 
-        return Message.fromstream(reader, h, c2s = c2s)
+        return Message.fromstream(reader, h)
 
     @staticmethod
-    def frombytes(buf, header, c2s = True):
+    def frombytes(buf, header):
         '''
         Parse a message from the specified buffer. The buffer must be at least
         header.payload_size bytes.
@@ -322,10 +306,10 @@ class Message(BinaryObject):
         if buf[-1] == ord('}'):
             buf = buf[:-1]
 
-        return Message.fromstream(Reader(buf), header, c2s = c2s)
+        return Message.fromstream(Reader(buf), header)
 
     @staticmethod
-    def allfrombytes(buf, c2s = True):
+    def allfrombytes(buf, c2s = False):
         if buf and buf[-1] == ord('}'):
             buf = buf[:-1]
 
@@ -364,10 +348,6 @@ class MultipleMessage(Message, metaclass = MessageMeta):
         self.attributes_info.append(Attribute(name, type(m), name))
         setattr(self, name, m)
 
-    def __iter__(self):
-        for attr in self.attributes_info:
-            yield getattr(self, attr.name)
-
     @classmethod
     def _fromstream(cls, reader, **kwargs):
         self = cls(**kwargs)
@@ -375,6 +355,6 @@ class MultipleMessage(Message, metaclass = MessageMeta):
             m = Message.allfromstream(reader, owner = self,
                                       c2s = kwargs.get('c2s', True))
             if not m:
-                raise RuntimeError('incomplete {} message'.format(cls.MSG_ID))
+                raise ParseError('incomplete {} message'.format(cls.MSG_ID))
             self.add_message(m)
         return self

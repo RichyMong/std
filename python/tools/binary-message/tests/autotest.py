@@ -64,7 +64,7 @@ def runtest(test):
             for error in loader.errors:
                 print(error, file=sys.stderr)
             if loader.errors:
-                raise Exception("errors while loading tests")
+                raise TestFailed("errors while loading tests")
             run_unittest(tests)
     test_runner()
 

@@ -43,11 +43,11 @@ class Client(base_client.BaseClient):
         if not len(data):
             self._close()
         elif not self._recv_header:
-            self._recv_header = Header.frombytes(data, c2s = False)
+            self._recv_header = Header.frombytes(data)
             f = self._loop.sock_recv(self._sock, self._recv_header.body_size())
             f.add_done_callback(self._data_received)
         else:
-            p = Message.frombytes(data, self._recv_header, c2s = False)
+            p = Message.frombytes(data, self._recv_header)
             self.handle_message(p)
             self._recv_header = None
 

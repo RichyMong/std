@@ -1,4 +1,4 @@
-﻿from emoney.util import Char
+﻿from ouou.util import Char
 
 MSG_FLAG_COMPRESSED   = 0x02
 MSG_FLAG_REQ_COMPRESS = 0x04
@@ -26,7 +26,8 @@ REQ_FLAG_START_TIME = 1
 MSG_DELIM = '{'
 MSG_TAIL_BYTES = Char.pack('}')
 
-PRINT_PREFIX = '\n\t'
+INDENT = 4 * ' '
+PRINT_PREFIX = '\n' + INDENT
 
 CHINSE_NUMBER = [ '零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
 

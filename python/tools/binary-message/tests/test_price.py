@@ -1,10 +1,10 @@
 import asyncio
 import logging
 import collections
-import emoney
+import ouou
 import optparse
-from config import *
-from emoney import util, message
+import config
+from ouou import util, message
 
 logging.basicConfig(format = '%(asctime)s %(name)-12s %(levelname)s %(message)s',
                 datefmt = '%F %T',
@@ -12,14 +12,13 @@ logging.basicConfig(format = '%(asctime)s %(name)-12s %(levelname)s %(message)s'
 
 class ConcurrentCase(object):
     def __init__(self, messages):
-        self.messages_to_send = messages
+        self.messages_to_send = list(messages)
         self.loop = asyncio.get_event_loop()
         self.client = None
         self.last_push_tp = collections.defaultdict(int)
         self.price_time = collections.defaultdict(list)
 
     def print_result(self):
-        import pdb; pdb.set_trace()
         count = max(len(x) for x in self.price_time.values())
         width = 20
         for i in range(count):
@@ -35,7 +34,7 @@ class ConcurrentCase(object):
                 print(line)
 
     def run(self, ip, port):
-        self.client = c = emoney.net.Client(self.loop)
+        self.client = c = ouou.net.Client(self.loop)
         c.set_message_callback(self.handle_message)
         c.set_state_callback(self.state_callback)
         c.connect((ip, port))
@@ -79,48 +78,12 @@ class ConcurrentCase(object):
         elif new_state == c.CONNECTED:
             c.send_message(*self.messages_to_send)
 
-def test_messages(messages, options):
-    messages_to_send = []
-    for mid in sorted(messages):
-        m = all_messages[mid]
-        if hasattr(m, 'push_type'):
-            if options.push:
-                m.push_type = message.PUSH_TYPE_REGISTER
-            else:
-                m.push_type = message.PUSH_TYPE_ONCE
-        messages_to_send.append(m)
+if __name__ == '__main__':
+    import sys
+    ns = config.parse_args(sys.argv[1:], receive_push=True)
 
-    case = ConcurrentCase(messages_to_send)
+    case = ConcurrentCase(ns.message.values())
     try:
-        case.run(options.ip, options.port)
+        case.run(ns.address, ns.port)
     except KeyboardInterrupt:
         case.print_result()
-
-if __name__ == '__main__':
-    parser = optparse.OptionParser()
-    parser.add_option('-m', '--message', action='store', type = str, dest='msg_id', default = '',
-                    help ='message to be sent')
-    # receive push, -p is ideal but we have --port option
-    parser.add_option('-s', '--server', action='store', type = str, dest='server', default='88',
-                      help='the server to use, 84/86/88, default 88')
-    parser.add_option('-i', '--ip', action='store', type = str, dest='ip', default='',
-                      help='the ip address of the server')
-    parser.add_option('-p', '--port', action='store', type = int, dest='port', default=1862,
-                      help='the port of the server, default 1862')
-    parser.add_option('-r', '--receive-push', action='store_true', dest='push', default=False,
-                      help='receive push message')
-    parser.add_option('-c', '--count', action='store', type=int, dest='count', default=1,
-                      help='concurrent count')
-
-    options, args = parser.parse_args()
-    messages = set()
-    if options.msg_id:
-        for mid in util.range_str_to_list(options.msg_id):
-            messages.add(mid)
-    else:
-        messages = all_messages.keys()
-
-    if options.ip: ip = options.ip
-    else: options.ip = '202.104.236.{}'.format(options.server)
-
-    test_messages(messages, options)

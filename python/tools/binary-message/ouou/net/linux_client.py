@@ -44,7 +44,7 @@ class Client(base_client.BaseClient):
             else:
                 self._buf += data
                 while True:
-                    p = Message.allfrombytes(self._buf, c2s = False)
+                    p = Message.allfrombytes(self._buf)
                     if not p:
                         break
                     self.handle_message(p)

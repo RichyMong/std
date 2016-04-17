@@ -2,7 +2,7 @@ import unittest
 import random
 import functools
 from config import *
-from emoney import net, message
+from ouou import net, message
 from datetime import datetime,timedelta,tzinfo
 
 class FixedOffset(tzinfo):
@@ -247,28 +247,18 @@ class TestMessage(unittest.TestCase):
     def tearDown(self):
         self.client.close()
 
-def runtest(mids = None):
-    if mids is None:
+def runtest(ns):
+    if ns.message.keys() == all_messages.keys():
         suite = unittest.TestLoader().loadTestsFromTestCase(TestMessage)
     else:
         suite = unittest.TestSuite(map(TestMessage,
-                      ('test_message_{}'.format(x) for x in mids)))
+                      ('test_message_{}'.format(x) for x in ns.message.keys())))
 
-    unittest.TextTestRunner(verbosity=2).run(suite)
+    unittest.TextTestRunner(verbosity=ns.verbosity).run(suite)
 
 if __name__ == '__main__':
-    import sys, optparse
+    import sys
 
-    parser = optparse.OptionParser()
-    parser.add_option('-m', '--message', action='store', type = str,
-                      dest='msg_id', default = '', help ='test messages')
-    parser.add_option('-s', '--stock', action='store', type = str,
-                      dest='stock_id', default = '', help ='test stocks')
+    ns = parse_args(sys.argv[1:])
 
-    options, _ = parser.parse_args()
-
-    use_stock(options.stock_id)
-
-    mids = util.range_str_to_list(options.msg_id) or None
-
-    runtest(mids)
+    runtest(ns)

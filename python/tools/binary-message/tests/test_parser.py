@@ -1,11 +1,11 @@
 import unittest
-from emoney import message, util
+from ouou import message, util
 
 class TestParser(unittest.TestCase):
     @staticmethod
     def parse_hex(hex_data):
         b = bytearray.fromhex(hex_data)
-        return message.Message.allfrombytes(b)
+        return message.Message.allfrombytes(b, c2s = True)
 
     def test_parse_request_5512(self):
         m = self.parse_hex('7b8815820020000100020800484b7c3030373030122a2c2d2e2f303132333435363738393a3b3c7d')

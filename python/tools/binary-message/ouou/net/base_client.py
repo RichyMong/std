@@ -2,7 +2,7 @@ import asyncio
 import socket
 import errno
 import logging
-from emoney import message
+from ouou import message
 from datetime import datetime
 from ..util.basetypes import Char
 
@@ -73,7 +73,7 @@ class BaseClient(object):
             return None
         header = message.Header.frombytes(head)
         body = self.recv_nbytes(header.body_size())
-        return message.Message.frombytes(body, header, c2s = False)
+        return message.Message.frombytes(body, header)
 
     def send_and_receive(self, *msg):
         if self._loop:

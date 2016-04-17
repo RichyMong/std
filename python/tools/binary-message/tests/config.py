@@ -1,15 +1,17 @@
 import random
+import argparse
+from collections import OrderedDict
 from datetime import datetime,timedelta
 
 try:
-    from emoney import util, message
+    from ouou import util, message
 except ImportError:
     import sys
     import os
     p = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
     if p not in sys.path:
         sys.path.append(p)
-    from emoney import util, message
+    from ouou import util, message
 
 SERVER = ('202.104.236.88', 1862)
 
@@ -139,3 +141,46 @@ def use_stock(stock_id=''):
         for m in all_messages.values():
             if hasattr(m, 'stock_id'):
                 setattr(m, 'stock_id', stock_id)
+
+def create_parser(description=''):
+    parser = argparse.ArgumentParser(description=description)
+    group = parser.add_argument_group('server information')
+    group.add_argument('-a', '--address', action='store', default='88',
+                         help='ip address or an integer in which case the'+
+                             ' address will be 202.104.236.xx, default 88')
+    group.add_argument('-p', '--port', action='store', type = int, default=1862,
+                        help='the port of the server, default 1862')
+    group = parser.add_argument_group('stock information')
+    group.add_argument('-m', '--message', nargs='*',
+                        help ='message ids, delimited by space')
+    group.add_argument('-s', '--stock-id', action='store',
+                        help='the stock id to use, random if not set')
+    parser.add_argument('-v', '--verbosity', action='count', default=2,
+                        help='print verbose')
+    return parser
+
+
+def parse_args(args, parser = None, **kwargs):
+    defaults = dict(message=[], stock_id=None, address='88', port=1862,
+                    verbosity=2)
+    defaults.update(kwargs)
+    ns = argparse.Namespace(**defaults)
+    if not parser:
+        parser = create_parser()
+    parser.parse_args(args=args, namespace=ns)
+    if ns.stock_id:
+        use_stock(ns.stock_id)
+
+    if ns.message:
+        message_ids = set(int(msg_id) for msg_id in ns.message)
+    else:
+        message_ids = set(all_messages.keys())
+
+    if ns.address.rfind('.') < 0:
+        ns.address = '202.104.236.{}'.format(ns.address)
+
+    ns.message = OrderedDict()
+    for mid in sorted(message_ids):
+        ns.message[mid] = all_messages[mid]
+
+    return ns
