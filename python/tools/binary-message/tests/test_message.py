@@ -2,7 +2,7 @@ import unittest
 import random
 import functools
 from config import *
-from ouou import net, message
+from emoney import net, message
 from datetime import datetime,timedelta,tzinfo
 
 class FixedOffset(tzinfo):
@@ -78,7 +78,7 @@ class TestMessage(unittest.TestCase):
         self.assertEqual(m.msg_id, request_5502.msg_id)
         self.assertEqual(m.pid, request_5502.pid)
         self.assertEqual(m.fields, request_5502.fields)
-        data = m.return_data
+        data = m.data
         for i in range(len(data) - 1):
             v, next_v = data[i][sort_index], data[i+1][sort_index]
             self.assertFalse(v < next_v)
@@ -88,8 +88,12 @@ class TestMessage(unittest.TestCase):
         self.assertEqual(m.msg_id, request_5501.msg_id)
         self.assertEqual(m.request_extra, request_5501.request_extra)
         self.assertEqual(m.fields, request_5501.fields)
-        self.assertEqual(m.extra_data.fields, request_5501.extra_fields)
-        self.assertFalse(m.extra_data.need_clear_local)
+        self.assertEqual(m.extra.fields, request_5501.extra_fields)
+        data = m.extra.data
+        if len(data) > 0 and data[0].date_time > request_5501.date_time:
+            self.assertTrue(m.extra.need_clear_local)
+        else:
+            self.assertFalse(m.extra.need_clear_local)
 
     def test_message_5503(self):
         m = self.client.send_and_receive(request_5503)
@@ -103,9 +107,9 @@ class TestMessage(unittest.TestCase):
         '''
         request_5504.market_code = 'HK|00700'
         m = self.client.send_and_receive(request_5504)
-        data = m.return_data
+        data = m.data
         self.assertEqual(m.msg_id, request_5504.msg_id)
-        self.assertEqual(len(m.return_data), 2)
+        self.assertEqual(len(m.data), 2)
         self.assertEqual(data[0].nth_start_day, 0)
         self.assertEqual(data[0].nth_end_day, 0)
         self.assertEqual((data[0].start_time, data[0].end_time), (930, 1200))
@@ -120,8 +124,8 @@ class TestMessage(unittest.TestCase):
         # DST: Beijing time 21:30 - 4:00
         us_start, us_end = 2130, 400
         m = self.client.send_and_receive(request_5504)
-        data = m.return_data
-        self.assertEqual(len(m.return_data), 1)
+        data = m.data
+        self.assertEqual(len(m.data), 1)
         if not us_now.dst():
             us_start += 100
             us_end += 100
@@ -172,20 +176,24 @@ class TestMessage(unittest.TestCase):
         self.assertEqual(m.pid, request_5512.pid)
         self.assertEqual(m.stock_id, request_5512.stock_id)
         self.assertEqual(m.fields, request_5512.fields)
-        self.assertEqual(len(m.return_data), len(m.fields))
+        self.assertEqual(len(m.data), len(m.fields))
 
     @save_config()
     def test_message_5513(self):
         request_5513.push_type = message.PUSH_TYPE_ONCE
+        request_5513.date_time = 0
         m = self.client.send_and_receive(request_5513)
         self.assertEqual(m.pid, request_5513.pid)
         self.assertEqual(m.stock_id, request_5513.stock_id)
-        self.assertFalse(m.data.need_clear_local)
-        self.assertEqual(m.data.fields, request_5513.fields)
+        self.assertFalse(m.need_clear_local)
+        self.assertEqual(m.fields, request_5513.fields)
 
         request_5513.date_time = int(delta_ago(days=7).strftime('%y%m%d%H%M')) # yyMMddHHmm
-        self.assertEqual(m.pid, request_5513.pid)
-        self.assertFalse(m.data.need_clear_local)
+        m = self.client.send_and_receive(request_5513)
+        if len(m.data) > 0 and m.data[0].date_time > request_5513.date_time:
+            self.assertTrue(m.need_clear_local)
+        else:
+            self.assertFalse(m.need_clear_local)
 
     @save_config()
     def test_message_5514(self):
@@ -200,11 +208,15 @@ class TestMessage(unittest.TestCase):
         self.assertEqual(m.stock_id, request_5514.stock_id)
         self.assertTrue(m.need_clear_local)
 
-        # request_5514.flag = message.REQ_FLAG_START_TIME
-        # request_5514.value = int(delta_ago(minutes=5).strftime('%H%M%S'))
-        # request_5514.nr_of_roots = random.randint(2, 10)
-        # m = self.client.send_and_receive(request_5514)
-        # self.assertEqual(len(m.deal_data), request_5514.nr_of_roots)
+        request_5514.flag = message.REQ_FLAG_START_TIME
+        request_5514.value = int(delta_ago(minutes=5).strftime('%H%M%S'))
+        request_5514.nr_of_roots = random.randint(2, 10)
+        m = self.client.send_and_receive(request_5514)
+        self.assertLessEqual(len(m.data), request_5514.nr_of_roots)
+        if len(m.data) > 0 and m.data[0].time > request_5514.value:
+            self.assertTrue(m.need_clear_local)
+        else:
+            self.assertFalse(m.need_clear_local)
 
     @save_config()
     def test_message_5515(self):
@@ -224,7 +236,7 @@ class TestMessage(unittest.TestCase):
         self.assertEqual(m.msg_id, request_5516.msg_id)
         self.assertEqual(m.pid, request_5516.pid)
         self.assertEqual(m.fields, request_5516.fields)
-        self.assertEqual(len(m.return_data), len(request_5516.content))
+        self.assertLessEqual(len(m.data), len(request_5516.content))
 
     @save_config()
     def test_message_5517(self):
@@ -259,6 +271,6 @@ def runtest(ns):
 if __name__ == '__main__':
     import sys
 
-    ns = parse_args(sys.argv[1:])
+    ns = parse_args(sys.argv[1:], receive_push=False)
 
     runtest(ns)

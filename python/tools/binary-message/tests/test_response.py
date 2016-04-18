@@ -1,5 +1,5 @@
-from ouou.message import *
-from ouou.util import *
+from emoney.message import *
+from emoney.util import *
 import unittest
 
 class TestResponse(unittest.TestCase):
@@ -25,16 +25,16 @@ class TestResponse(unittest.TestCase):
         r.data_pos = 100
         r.need_clear_local = 0
         r.fields = range_str_to_list('1-4')
-        r.deal_data.append(((411, 1030, 159500, 800000)))
-        r.deal_data.append(((411, 1031, 159600, 50000)))
+        r.data.append(((411, 1030, 159500, 800000)))
+        r.data.append(((411, 1031, 159600, 50000)))
         b = r.tobytes()
         t = Message.allfrombytes(b, c2s = False)
         self.assertEqual(t, r)
 
     def test_5504(self):
         r = Response_5504()
-        r.return_data.append(r.data_type((1, 1030, 2, 16000)))
-        r.return_data.append(r.data_type((1, 9300, 2, 16000)))
+        r.data.append(r.data_type((1, 1030, 2, 16000)))
+        r.data.append(r.data_type((1, 9300, 2, 16000)))
         b = r.tobytes()
         t = Message.allfrombytes(b, c2s = False)
         self.assertEqual(t.tobytes(), b)
@@ -44,11 +44,11 @@ class TestResponse(unittest.TestCase):
         r = Response_5506()
         r.result = 1
         r.server_inc_id = 3
-        r.return_data.append((1, '116', '香港', 'HK', 2, 0, 1))
-        r.return_data.append((2, '119', '香港', 'HK', 2, 0, 2))
+        r.data.append((1, '116', '香港', 'HK', 2, 0, 1))
+        r.data.append((2, '119', '香港', 'HK', 2, 0, 2))
         b = r.tobytes()
         t = Message.allfrombytes(b, c2s = False)
-        self.assertEqual(t.return_data[0], r.return_data[0])
+        self.assertEqual(t.data[0], r.data[0])
         self.assertEqual(t.tobytes(), b)
         self.assertEqual(t, r)
 

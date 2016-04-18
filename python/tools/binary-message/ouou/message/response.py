@@ -46,21 +46,28 @@ def VarFields(fields, iterfunc):
     The fields is an iterable object of type Attribute.
     '''
     class Wrapper(list, DepAttr):
-        @staticmethod
-        def get_data_type(owner):
+        def get_data_type(self, owner):
             '''
             We may scan the fields directly but we want to have the same
             behaviour as all the other binary objects.
             '''
-            attributes_info = tuple(fields[x - 1] for x in iterfunc(owner))
-            return message.create_class('VarFieldsWrapper', attributes_info)
+            self.attributes_info = tuple(fields[x - 1] for x in iterfunc(owner))
+            data_type = message.create_class('VarFieldsWrapper', self.attributes_info)
+            return data_type
 
         @classmethod
         def fromstream(cls, reader, owner, **kwargs):
-            w = Wrapper.get_data_type(owner).fromstream(reader)
-            self = cls(w)
+            self = cls(**kwargs)
             self.owner = owner
+            w = self.get_data_type(owner).fromstream(reader)
+            self.extend(w)
             return self
+
+        def __getattr__(self, name):
+            for i, attr in enumerate(self.attributes_info):
+                if attr.name == name:
+                    return self[i]
+            raise ValueError('not found {}'.format(name))
 
         def tobytes(self, owner):
             return self.get_data_type(owner)(self).tobytes()
@@ -78,11 +85,10 @@ def VarFieldsVector(size_cls, fields, iterfunc):
         instance and append tuples to it as well as read from a stream.
         '''
         def get_data_type(self, owner):
-            if not getattr(self, 'data_type', None):
-                attributes_info = tuple(fields[x - 1] for x in iterfunc(owner))
-                self.data_type = message.create_class('VarFieldsVector_data_type',
-                                    attributes_info)
-            return self.data_type
+            attributes_info = tuple(fields[x - 1] for x in iterfunc(owner))
+            data_type = message.create_class('VarFieldsVector_data_type',
+                                attributes_info)
+            return data_type
 
         @classmethod
         def fromstream(cls, reader, owner, **kwargs):
@@ -187,36 +193,7 @@ class TimeTrend(message.BinaryObject):
     Used by response 5501 and 5513.
     '''
     all_fields_info = (
-        Attribute('time_data', Int, '时间'),
-        Attribute('open_price', UInt, '开盘价'),
-        Attribute('highest_price', UInt, '最高价'),
-        Attribute('lowest_price', UInt, '最低价'),
-        Attribute('close_price', UInt, '分钟收盘价'),
-        Attribute('avg_price', UInt, '平均价'),
-        Attribute('volume', LargeInt, '成交量'),
-        Attribute('amount', LargeInt, '成交额'),
-        Attribute('tick_count', UInt, '成交笔数'),
-        Attribute('sellvol', LargeInt, '外盘'),
-        Attribute('inventory', LargeInt, '持仓量'),
-        Attribute('inventory_change', LargeInt, '持仓量变化'),
-        Attribute('settlement_price', UInt, '结算价'),
-        Attribute('buyvol', LargeInt, '内盘')
-    )
-
-    attributes_info = (
-            Attribute('fields', ByteVector, '应答字段ID'),
-            Attribute('need_clear_local', Byte, '是否需要清除本地数据'),
-            Attribute('total_num', UShort, '数据总数'),
-            Attribute('return_data', VarFieldsVector(UShort, all_fields_info,
-                              lambda self : self.fields), '分时走势数据')
-        )
-
-class TimeSharing(message.BinaryObject):
-    '''
-    Used by response 5503 and 5514.
-    '''
-    all_fields_info = (
-        Attribute('time_data', Int, '时间'),
+        Attribute('date_time', Int, '时间'),
         Attribute('open_price', UInt, '开盘价'),
         Attribute('highest_price', UInt, '最高价'),
         Attribute('lowest_price', UInt, '最低价'),
@@ -236,10 +213,9 @@ class TimeSharing(message.BinaryObject):
         Attribute('fields', ByteVector, '应答字段ID'),
         Attribute('need_clear_local', Byte, '是否需要清除本地数据'),
         Attribute('total_num', UShort, '数据总数'),
-        Attribute('return_data', VarFieldsVector(UShort, all_fields_info,
-                           lambda self : self.fields), '返回数据'),
+        Attribute('data', VarFieldsVector(UShort, all_fields_info,
+                          lambda self : self.fields), '分时走势数据')
     )
-
 
 class Response_5500(message.MultipleMessage, metaclass = ResponseMeta):
     pass
@@ -273,7 +249,7 @@ class Response_5501(message.Message, metaclass = ResponseMeta):
     # American markets use two digits int. However, it's tough for us to
     # deal with this situation. We need the stock_id or market_code to
     # know which market is returned and it may not be required.
-    quotation_response_fields = (
+    all_fields_info = (
         Attribute('date_time', Int, '行情日期和时间'),
         Attribute('stock_id', String, '唯一标识'),
         Attribute('stock_name', GBKString, '股票名称'),
@@ -330,20 +306,20 @@ class Response_5501(message.Message, metaclass = ResponseMeta):
     attributes_info = (
         Attribute('request_extra', Byte, '同时请求其他数据'),
         Attribute('fields', ByteVector, '应答字段'),
-        Attribute('return_data', VarFields(quotation_response_fields,
+        Attribute('data', VarFields(all_fields_info,
                             lambda self : self.fields), ''),
-        OptionalAttribute('extra_data',TimeTrend, '同时请求附加数据',
+        OptionalAttribute('extra',TimeTrend, '同时请求附加数据',
                           lambda self : self.request_extra),
     )
 
 class Response_5502(message.Message, metaclass = ResponseMeta):
-    all_fields_info = Response_5501.quotation_response_fields
+    all_fields_info = Response_5501.all_fields_info
 
     attributes_info = (
         Attribute('pid', Byte, '协议标识'),
         Attribute('fields', ByteVector, '返回字段ID'),
         Attribute('total_num', UShort, '总数据个数'),
-        Attribute('return_data', VarFieldsVector(UShort, all_fields_info,
+        Attribute('data', VarFieldsVector(UShort, all_fields_info,
                           lambda self : self.fields), '返回数据')
     )
 
@@ -364,7 +340,7 @@ class Response_5503(message.Message, metaclass = ResponseMeta):
         Attribute('data_pos', UInt, '数据位置'),
         Attribute('need_clear_local', Byte, '是否需要清除本地数据'),
         Attribute('fields', ByteVector, '应答字段ID'),
-        Attribute('deal_data', VarFieldsVector(UShort, all_fields,
+        Attribute('data', VarFieldsVector(UShort, all_fields,
                      lambda self : self.fields,), '成交数据'),
     )
 
@@ -380,7 +356,7 @@ class Response_5504(message.Message, metaclass = ResponseMeta):
     )
 
     attributes_info = (
-          Attribute('return_data', Vector(Byte, data_type), '返回数据'),
+          Attribute('data', Vector(Byte, data_type), '返回数据'),
     )
 
 class Response_5505(message.Message, metaclass = ResponseMeta):
@@ -406,7 +382,7 @@ class Response_5506(message.Message, metaclass = ResponseMeta):
     attributes_info = (
         Attribute('result', Byte, '处理结果'),
         Attribute('server_inc_id', UInt, '服务器最新增量ID'),
-        Attribute('return_data', Vector(UShort, data_type), '返回数据')
+        Attribute('data', Vector(UShort, data_type), '返回数据')
     )
 
 class Response_5508(message.Message, metaclass = ResponseMeta):
@@ -629,7 +605,7 @@ class Response_5512(message.Message, metaclass = ResponseMeta):
         Attribute('pid', UShort, '协议标识'),
         Attribute('stock_id', String, '代码唯一标识'),
         Attribute('fields', ByteVector, '应答字段ID'),
-        Attribute('return_data', VarFields(all_fields_info,
+        Attribute('data', VarFields(all_fields_info,
                        lambda self : self.fields), ''),
     )
 
@@ -637,8 +613,7 @@ class Response_5513(message.Message, metaclass = ResponseMeta):
     attributes_info = (
         Attribute('pid', UShort, '协议标识'),
         Attribute('stock_id', String, '代码唯一标识'),
-        Attribute('data', TimeTrend, '分时走势'),
-    )
+    ) + TimeTrend.attributes_info
 
 class Response_5514(message.Message, metaclass = ResponseMeta):
     attributes_info = (
@@ -651,7 +626,7 @@ class Response_5514(message.Message, metaclass = ResponseMeta):
         Attribute('need_clear_local', Byte, '是否需要清除本地数据'),
         Attribute('data_pos', UInt, '数据位置'),
         Attribute('total_num', UShort, '数据总数'),
-        Attribute('deal_data', VarFieldsVector(UShort, Response_5503.all_fields,
+        Attribute('data', VarFieldsVector(UShort, Response_5503.all_fields,
                          lambda self : self.fields,), '成交数据'),
     )
 
@@ -702,8 +677,8 @@ class Response_5516(message.Message, metaclass = ResponseMeta):
         Attribute('pid', UShort, '协议标识'),
         Attribute('fields', ByteVector, '返回字段ID'),
         Attribute('total_num', UShort, '总数据个数'),
-        Attribute('return_data', VarFieldsVector(UShort,
-                        Response_5501.quotation_response_fields,
+        Attribute('data', VarFieldsVector(UShort,
+                        Response_5501.all_fields_info,
                         lambda self : self.fields), '返回数据'),
     )
 
@@ -758,19 +733,22 @@ class Push_5514(message.Message, metaclass = PushMeta):
           Attribute('fields', ByteVector, '应答字段ID'),
           Attribute('need_clear_local', Byte, '是否需要清除本地数据'),
           Attribute('total_num', UShort, '数据总数'),
-          Attribute('return_data', VarFieldsVector(UShort, Response_5503.all_fields, lambda self : self.fields), '分时成交数据'),
+          Attribute('data', VarFieldsVector(UShort, Response_5503.all_fields,
+                       lambda self : self.fields), '分时成交数据'),
     )
 
 class Push_5516(message.Message, metaclass = PushMeta):
     class Data(BinaryObject):
+        all_fields_info = Response_5501.all_fields_info
+
         attributes_info = (
             Attribute('fields', ByteVector, '返回字段'),
-            Attribute('fields_data', VarFields(Response_5501.quotation_response_fields,
+            Attribute('fields_data', VarFields(all_fields_info,
                             lambda self : self.fields), '')
         )
 
     attributes_info = (
         Attribute('pid', UShort, '协议标识'),
         Attribute('total_num', UShort, '总数据个数'),
-        Attribute('return_data', Vector(UShort, Data), '推送数据'),
+        Attribute('data', Vector(UShort, Data), '推送数据'),
     )

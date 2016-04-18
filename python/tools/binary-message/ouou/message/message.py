@@ -83,7 +83,11 @@ class BinaryObject(metaclass = BinaryObjectMeta):
 
         for attr in self.attributes_info:
             if isinstance(attr, Attribute) and not hasattr(self, attr.name):
-                setattr(self, attr.name, kwargs.get(attr.name, attr.type()))
+                if issubclass(attr.type, BinaryObject):
+                    default = attr.type(owner = self)
+                else:
+                    default = attr.type()
+                setattr(self, attr.name, kwargs.get(attr.name, default))
 
     @property
     def attributes(self):

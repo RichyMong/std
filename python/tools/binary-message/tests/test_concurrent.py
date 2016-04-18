@@ -3,8 +3,8 @@ import logging
 import collections
 import argparse
 import config
-import ouou
-from ouou import util, message
+import emoney
+from emoney import util, message
 
 logging.basicConfig(format = '%(asctime)s %(name)-12s %(levelname)s %(message)s',
                 datefmt = '%F %T',
@@ -87,7 +87,7 @@ class ConcurrentCase(object):
 
     def run(self, ip, port):
         for i in range(self.count):
-            c = ouou.net.Client(self.loop)
+            c = emoney.net.Client(self.loop)
             c.set_message_callback(self.handle_message)
             c.set_state_callback(self.state_callback)
             self.connection_tp[c.cid] = util.get_milliseconds()
@@ -144,12 +144,6 @@ def runtest(args, **kwargs):
     parser.add_argument('-c', '--count', action='store', type=int, default=1,
                          help='concurrent count')
     ns = config.parse_args(args, parser = parser, **kwargs)
-    for m in ns.message.values():
-        if hasattr(m, 'push_type'):
-            if ns.receive_push:
-                m.push_type = message.PUSH_TYPE_REGISTER
-            else:
-                m.push_type = message.PUSH_TYPE_ONCE
     case = ConcurrentCase(ns.count, ns.message.values())
     try:
         case.run(ns.address, ns.port)

@@ -4,18 +4,18 @@ from collections import OrderedDict
 from datetime import datetime,timedelta
 
 try:
-    from ouou import util, message
+    from emoney import util, message
 except ImportError:
     import sys
     import os
     p = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
     if p not in sys.path:
         sys.path.append(p)
-    from ouou import util, message
+    from emoney import util, message
 
 SERVER = ('202.104.236.88', 1862)
 
-SERVER_VERSION = 20160414
+SERVER_VERSION = 20160418
 
 start_time = datetime.now() - timedelta(minutes=random.randint(5, 10))
 
@@ -74,7 +74,7 @@ request_5512 = message.Request_5512()
 request_5512.pid = 1
 request_5512.push_type = message.PUSH_TYPE_ONCE
 request_5512.stock_id = random.choice(sample_stocks)
-request_5512.fields = [42,44,45,46]
+request_5512.fields = [52]
 
 request_5513 = message.Request_5513()
 request_5513.pid = 1
@@ -181,6 +181,12 @@ def parse_args(args, parser = None, **kwargs):
 
     ns.message = OrderedDict()
     for mid in sorted(message_ids):
-        ns.message[mid] = all_messages[mid]
+        m = all_messages[mid]
+        if hasattr(m, 'push_type'):
+            if ns.receive_push:
+                m.push_type = message.PUSH_TYPE_REGISTER
+            else:
+                m.push_type = message.PUSH_TYPE_ONCE
+        ns.message[mid] = m
 
     return ns

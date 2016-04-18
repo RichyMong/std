@@ -2,7 +2,7 @@ import asyncio
 import socket
 import errno
 import logging
-from ouou import message
+from emoney import message
 from datetime import datetime
 from ..util.basetypes import Char
 
@@ -39,7 +39,6 @@ class BaseClient(object):
         self._waited_push = set()
         self._ka_handle = None
         self._recv_msg = None
-        self._waited_future = None
 
     def connect(self, address):
         '''
@@ -135,18 +134,15 @@ class BaseClient(object):
     def handle_message(self, msg):
         msg_id = msg.header.msg_id
         waiting = msg_id in self._waited_response
-        if not msg.is_push_msg() and msg_id != 5500:
+        if not msg.is_push_msg() and waiting:
             try:
                 self._waited_response.remove(msg.header.msg_id)
             except ValueError:
                 LOGGER.error('{} received unexpected message {}'.format(self, msg_id))
                 LOGGER.error('{} waiting for {}'.format(self, self._waited_response))
 
-        if msg_id != BaseClient.HeartBeat.MSG_ID or waiting:
-            if self._waited_future:
-                self._waited_future.set_result(msg)
-            else:
-                self._message_callback(self, msg)
+        if msg_id != self.HeartBeat.MSG_ID or waiting:
+            self._message_callback(self, msg)
 
     def _setup_connection(self):
         if self.state == BaseClient.CONNECTED:
@@ -170,7 +166,7 @@ class BaseClient(object):
     def keep_alive(self):
         msg = BaseClient.HeartBeat()
         msg.pid = 1
-        self.send_message(msg)
+        self.send_data(msg.tobytes())
         if self._loop:
             self._ka_handle = self._loop.call_later(self.HEARTBEAT_PERIOD, self.keep_alive)
 
@@ -185,7 +181,6 @@ class BaseClient(object):
         self.change_state(BaseClient.CLOSED)
         self._sock.close()
         if self._ka_handle: self._ka_handle.cancel()
-        if self._waited_future: self._waited_future.cancel()
 
     def __repr__(self):
         return 'Client<{}>'.format(self.cid)

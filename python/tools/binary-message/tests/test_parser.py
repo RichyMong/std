@@ -1,5 +1,5 @@
 import unittest
-from ouou import message, util
+from emoney import message, util
 
 class TestParser(unittest.TestCase):
     @staticmethod

@@ -1,4 +1,4 @@
-﻿from ouou.util import Char
+﻿from emoney.util import Char
 
 MSG_FLAG_COMPRESSED   = 0x02
 MSG_FLAG_REQ_COMPRESS = 0x04
