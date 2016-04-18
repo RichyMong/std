@@ -8,6 +8,7 @@ from ..util.stream import Reader
 from ..util import *
 
 __all__ = [
+            'get_stock_cache', 'set_stock_cache',
             'Response_5501', 'Response_5502', 'Response_5503', 'Response_5504',
             'Response_5505', 'Response_5506', 'Response_5508',
             'Response_5509', 'Response_5510', 'Response_5511', 'Response_5512',
@@ -15,7 +16,13 @@ __all__ = [
             'Response_5517', 'Response_5518',
            ]
 
-cache_stock_display = {}
+stock_cache = {}
+
+def get_stock_cache(stock):
+    return stock_cache.get(stock, None)
+
+def set_stock_cache(stock, cache):
+    stock_cache[stock] = cache
 
 def VarArray(sizefunc, elem_cls):
     '''
@@ -204,46 +211,59 @@ def MarketPrice(market_func, rep_cls = UInt, extra = 0):
         def __init__(self, value = rep_cls(), **kwargs):
             super().__init__(**kwargs)
             self.value = value
+            self.market = market_func(self.owner)
 
         @classmethod
         def fromstream(cls, reader, **kwargs):
             self = cls(**kwargs)
             self.value = rep_cls.fromstream(reader)
-            self.market = market_func(self.owner)
-            for i in range(DIGITS[self.market], REPR_DIGIT):
-                self.value *= 10
             return self
 
         def tobytes(self):
             return rep_cls.pack(self.value)
 
+        def compare(self, other):
+            repr_digits = max(DIGITS[x.market] for x in (self, other))
+            a, b = self.value, other.value
+            for i in range(DIGITS[self.market], repr_digits):
+                a *= 10
+
+            for i in range(DIGITS[other.market], repr_digits):
+                b *= 10
+
+            return a - b
+
         def __getattr__(self, name):
             return getattr(self, name)
 
         def __eq__(self, other):
-            if type(self) in type(other):
-                return self.value == other.value
+            if type(self) is type(other):
+                return self.compare(other) == 0
             elif type(other) is int:
                 return self.value == other
             else:
                 return False
 
         def __lt__(self, other):
-            if type(self) in type(other):
-                return self.value < other.value
+            if type(self) is type(other):
+                return self.compare(other) < 0
             elif type(other) is int:
                 return self.value < other
             else:
                 return False
 
         def __gt__(self, other):
-            return not any(self < other, self == other)
-
+            if type(self) is type(other):
+                return self.compare(other) > 0
+            elif type(other) is int:
+                return self.value > other
+            else:
+                return False
 
         def __str__(self):
             if hasattr(self, 'market'):
                 t = self.value
-                for i in range(0, REPR_DIGIT):
+                for i in range(0, DIGITS[self.market]):
                     t /= 10
                 return '{:.{}f}'.format(t, DIGITS[self.market])
             else:
@@ -419,7 +439,7 @@ class Response_5511(message.Message, metaclass = ResponseMeta):
             Attribute('open_price', UInt, '开盘价'),
             Attribute('highest_price', UInt, '最高价'),
             Attribute('lowest_price', UInt, '最低价'),
-            Attribute('latest_price', MarketPrice(lambda x : x.stock_code()), '最新价'),
+            Attribute('latest_price', MarketPrice(lambda x : x.market_code), '最新价'),
             Attribute('volume', LargeInt, '成交量'),
             Attribute('amount', LargeInt, '成交额'),
             Attribute('trade_count', UInt, '成交笔数'),

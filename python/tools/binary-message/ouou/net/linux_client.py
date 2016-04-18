@@ -19,6 +19,23 @@ class Client(base_client.BaseClient):
         else:
             LOGGER.error('connect to {}: {}'.format(addr, os.strerror(ec)))
 
+    def set_loop(self, new_loop):
+        if not self._loop:
+            if self.state == self.CONNECTING:
+                self._loop.remove_writer(self._sock.fileno())
+            if self.state == self.CONNECTED:
+                self._loop.remove_reader(self._sock.fileno())
+
+        if new_loop:
+            self._sock.setblocking(False)
+            if self.state == self.CONNECTING:
+                new_loop.add_writer(self._sock.fileno())
+            if self.state == self.CONNECTED:
+                new_loop.add_reader(self._sock.fileno())
+        else:
+            self._sock.setblocking(True)
+        self._loop = new_loop
+
     def async_send_data(self, data):
         self._sock.sendall(data)
 

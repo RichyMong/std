@@ -95,6 +95,6 @@ def runtest(ns):
 if __name__ == '__main__':
     import sys
 
-    ns = config.parse_args(sys.argv[1:])
+    ns = config.parse_args(sys.argv[1:], offline=True)
 
     runtest(ns)

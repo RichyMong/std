@@ -1,5 +1,6 @@
 import random
 import argparse
+from ouou import message, net
 from collections import OrderedDict
 from datetime import datetime,timedelta
 
@@ -161,6 +162,8 @@ def create_parser(description=''):
 
 
 def parse_args(args, parser = None, **kwargs):
+    offline = kwargs.pop('offline', False)
+
     defaults = dict(message=[], stock_id=None, address='88', port=1862,
                     verbosity=2, receive_push=False)
     defaults.update(kwargs)
@@ -189,4 +192,26 @@ def parse_args(args, parser = None, **kwargs):
                 m.push_type = message.PUSH_TYPE_ONCE
         ns.message[mid] = m
 
+    if not offline:
+        server = (ns.address, ns.port)
+        if ns.stock_id:
+            fetch_stock_price_digits([ns.stock_id], server)
+        else:
+            fetch_stock_price_digits(sample_stocks, server)
+
     return ns
+
+def fetch_stock_price_digits(stocks, server):
+    c = net.Client()
+    c.connect(server)
+
+    for stock in stocks:
+        if message.get_stock_cache(stock) is None:
+            req = message.Request_5512()
+            req.pid = 1
+            req.push_type = message.PUSH_TYPE_ONCE
+            req.stock_id = stock
+            req.fields = [72, 73]
+            m = c.send_and_receive(req)
+            if not m.empty():
+                message.set_stock_cache(stock, (m.data[0], m.data[1]))

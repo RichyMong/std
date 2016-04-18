@@ -50,7 +50,7 @@ class BinaryObject(Serializable):
 
         for attr in self.attributes_info:
             if isinstance(attr, Attribute) and not hasattr(self, attr.name):
-                if issubclass(attr.type, BinaryObject):
+                if issubclass(attr.type, Serializable):
                     default = attr.type(owner = self)
                 else:
                     default = attr.type()
@@ -79,9 +79,10 @@ class BinaryObject(Serializable):
         r = ''
 
         for i, attr in enumerate(self.attributes):
-            if i: r += PRINT_PREFIX
-            if attr.desc: r += '{}: '.format(attr.desc)
-            r += '{}'.format(getattr(self, attr.name))
+            if hasattr(self, attr.name):
+                if i: r += PRINT_PREFIX
+                if attr.desc: r += '{}: '.format(attr.desc)
+                r += '{}'.format(getattr(self, attr.name))
 
         return r or 'Empty'
 

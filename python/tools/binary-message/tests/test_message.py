@@ -1,6 +1,8 @@
+import sys
 import unittest
 import random
 import functools
+import locale
 from config import *
 from ouou import net, message
 from datetime import datetime,timedelta,tzinfo
@@ -74,6 +76,7 @@ class TestMessage(unittest.TestCase):
     def test_message_5502(self):
         sort_index = random.randint(0, len(request_5502.fields) - 1)
         request_5502.sort_field = request_5502.fields[sort_index]
+        request_5502.sort_method = message.SORT_ORDER_DESC
         m = self.client.send_and_receive(request_5502)
         self.assertEqual(m.msg_id, request_5502.msg_id)
         self.assertEqual(m.pid, request_5502.pid)
@@ -81,7 +84,17 @@ class TestMessage(unittest.TestCase):
         data = m.data
         for i in range(len(data) - 1):
             v, next_v = data[i][sort_index], data[i+1][sort_index]
-            self.assertFalse(v < next_v)
+            if isinstance(v, str):
+                if sys.platform[0:5] != 'win32':
+                    locale.setlocale(locale.LC_COLLATE, 'zh_CN.GBK')
+                    self.assertGreaterEqual(locale.strcoll(v, next_v), 0)
+                # The result is not correct on Windows.
+                #locale.setlocale(locale.LC_COLLATE, "chs")
+            else:
+                # require as little as possible for the class, so we do not
+                # use assertGreaterEqual to express v >= next_v
+                self.assertFalse(v < next_v)
+        locale.setlocale(locale.LC_COLLATE, '')
 
     def test_message_5501(self):
         m = self.client.send_and_receive(request_5501)
