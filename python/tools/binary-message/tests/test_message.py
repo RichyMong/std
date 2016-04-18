@@ -185,15 +185,15 @@ class TestMessage(unittest.TestCase):
         m = self.client.send_and_receive(request_5513)
         self.assertEqual(m.pid, request_5513.pid)
         self.assertEqual(m.stock_id, request_5513.stock_id)
-        self.assertFalse(m.need_clear_local)
-        self.assertEqual(m.fields, request_5513.fields)
+        self.assertFalse(m.td.need_clear_local)
+        self.assertEqual(m.td.fields, request_5513.fields)
 
         request_5513.date_time = int(delta_ago(days=7).strftime('%y%m%d%H%M')) # yyMMddHHmm
         m = self.client.send_and_receive(request_5513)
-        if len(m.data) > 0 and m.data[0].date_time > request_5513.date_time:
-            self.assertTrue(m.need_clear_local)
+        if len(m.td.data) > 0 and m.td.data[0].date_time > request_5513.date_time:
+            self.assertTrue(m.td.need_clear_local)
         else:
-            self.assertFalse(m.need_clear_local)
+            self.assertFalse(m.td.need_clear_local)
 
     @save_config()
     def test_message_5514(self):

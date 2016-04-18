@@ -19,7 +19,7 @@ OptionalAttribute = collections.namedtuple('Attribute',
 
 class ReadDepAttr(object):
     @classmethod
-    def fromstream(cls, reader, owner, **kwargs):
+    def fromstream(cls, reader, **kwargs):
         raise NotImplementedError('')
 
 class WriteDepAttr(object):
@@ -38,13 +38,13 @@ class ParseError(Exception):
 class BinaryObjectMeta(type):
     def _fromstream(cls, reader, **kwargs):
         self = cls(**kwargs)
-        for attr in cls.attributes_info:
+        for attr in self.attributes_info:
             field, field_type, *extra = attr
             if isinstance(attr, OptionalAttribute) and not extra[1](self):
                 continue
 
-            if issubclass(field_type, ReadDepAttr):
-                dattr = field_type.fromstream(reader, self)
+            if issubclass(field_type, (ReadDepAttr, BinaryObject)):
+                dattr = field_type.fromstream(reader, owner = self)
                 if dattr:
                     setattr(self, field, dattr)
             else:
@@ -107,6 +107,9 @@ class BinaryObject(metaclass = BinaryObjectMeta):
             return tuple(self) == tuple(other)
         else:
             return False
+
+    def __len__(self):
+        return len(self.attributes_info)
 
     def __str__(self):
         r = ''

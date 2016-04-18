@@ -25,7 +25,8 @@ def VarArray(sizefunc, elem_cls):
     '''
     class Wrapper(TypeList(elem_cls), ReadDepAttr):
         @classmethod
-        def fromstream(cls, reader, owner, **kwargs):
+        def fromstream(cls, reader, **kwargs):
+            owner = kwargs.pop('owner')
             self = cls(**kwargs)
             for i in range(sizefunc(owner)):
                 self.append(reader.read_type(elem_cls))
@@ -39,75 +40,33 @@ def VarArray(sizefunc, elem_cls):
 
     return Wrapper
 
-def VarFields(fields, iterfunc):
-    '''
-    Return a class which has attributes dependent on iterfunc. iterfunc should
-    be a callable with one parameter as the object this class is embedded in.
-    The fields is an iterable object of type Attribute.
-    '''
-    class Wrapper(list, DepAttr):
-        def get_data_type(self, owner):
-            '''
-            We may scan the fields directly but we want to have the same
-            behaviour as all the other binary objects.
-            '''
-            self.attributes_info = tuple(fields[x - 1] for x in iterfunc(owner))
-            data_type = message.create_class('VarFieldsWrapper', self.attributes_info)
-            return data_type
+class VarFields(BinaryObject):
+    def __init__(self, iterable = None, **kwargs):
+        owner = kwargs.get('owner')
+        self.attributes_info = tuple(owner.all_fields_info[x - 1] for x in owner.fields)
+        super().__init__(iterable, **kwargs)
+
+def VarFieldsVector(size_cls):
+    class Wrapper(BinaryObject):
+        attributes_info = ()
+
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.values = []
 
         @classmethod
-        def fromstream(cls, reader, owner, **kwargs):
+        def fromstream(cls, reader, **kwargs):
             self = cls(**kwargs)
-            self.owner = owner
-            w = self.get_data_type(owner).fromstream(reader)
-            self.extend(w)
+            size = size_cls.fromstream(reader)
+            for i in range(size):
+                self.values.append(VarFields.fromstream(reader, owner=self.owner))
             return self
 
-        def __getattr__(self, name):
-            for i, attr in enumerate(self.attributes_info):
-                if attr.name == name:
-                    return self[i]
-            raise ValueError('not found {}'.format(name))
-
-        def tobytes(self, owner):
-            return self.get_data_type(owner)(self).tobytes()
-
-        def __str__(self):
-            s = str(self.get_data_type(self.owner)(self))
-            return s
-
-    return Wrapper
-
-def VarFieldsVector(size_cls, fields, iterfunc):
-    class Wrapper(list, DepAttr):
-        '''
-        Use list to represent the information to make it easy to create an
-        instance and append tuples to it as well as read from a stream.
-        '''
-        def get_data_type(self, owner):
-            attributes_info = tuple(fields[x - 1] for x in iterfunc(owner))
-            data_type = message.create_class('VarFieldsVector_data_type',
-                                attributes_info)
-            return data_type
-
-        @classmethod
-        def fromstream(cls, reader, owner, **kwargs):
-            self = cls(**kwargs)
-            self.fields = tuple(x for x in iterfunc(owner))
-            data_type = self.get_data_type(owner)
-            return Vector(size_cls, data_type).fromstream(reader)
-
-        def tobytes(self, owner):
-            data_type = self.get_data_type(owner)
-            b = size_cls.pack(len(self))
-            for x in self:
-                '''
-                Can not check if x is an instance of data_type here since
-                create_class returns an unique class every time.
-                '''
-                if not isinstance(x, BinaryObject):
-                    x = data_type(x)
-                b += x.tobytes()
+        def tobytes(self):
+            b = size_cls.pack(len(self.values))
+            for x in self.values:
+                v = VarFields(x, owner = self.owner)
+                b += v.tobytes()
 
             return b
 
@@ -118,6 +77,8 @@ def VarFieldsVector(size_cls, fields, iterfunc):
                          sep = 30 * '-', no = i + 1, x = x)
             return r
 
+        def __getattr__(self, name):
+            return getattr(self.values, name)
     return Wrapper
 
 class PriceSeat(UInt):
@@ -213,8 +174,7 @@ class TimeTrend(message.BinaryObject):
         Attribute('fields', ByteVector, '应答字段ID'),
         Attribute('need_clear_local', Byte, '是否需要清除本地数据'),
         Attribute('total_num', UShort, '数据总数'),
-        Attribute('data', VarFieldsVector(UShort, all_fields_info,
-                          lambda self : self.fields), '分时走势数据')
+        Attribute('data', VarFieldsVector(UShort), '分时走势数据')
     )
 
 class Response_5500(message.MultipleMessage, metaclass = ResponseMeta):
@@ -225,7 +185,8 @@ def MarketPrice(market_func, rep_cls = UInt, extra = 0):
     REPR_DIGIT = max(DIGITS.values())
     class Wrapper(rep_cls, ReadDepAttr):
         @classmethod
-        def fromstream(cls, reader, owner):
+        def fromstream(cls, reader, **kwargs):
+            owner = kwargs.get('owner')
             v = rep_cls.fromstream(reader)
             market = market_func(owner)
             for i in range(DIGITS[market], REPR_DIGIT):
@@ -306,8 +267,7 @@ class Response_5501(message.Message, metaclass = ResponseMeta):
     attributes_info = (
         Attribute('request_extra', Byte, '同时请求其他数据'),
         Attribute('fields', ByteVector, '应答字段'),
-        Attribute('data', VarFields(all_fields_info,
-                            lambda self : self.fields), ''),
+        Attribute('data', VarFields, ''),
         OptionalAttribute('extra',TimeTrend, '同时请求附加数据',
                           lambda self : self.request_extra),
     )
@@ -319,12 +279,11 @@ class Response_5502(message.Message, metaclass = ResponseMeta):
         Attribute('pid', Byte, '协议标识'),
         Attribute('fields', ByteVector, '返回字段ID'),
         Attribute('total_num', UShort, '总数据个数'),
-        Attribute('data', VarFieldsVector(UShort, all_fields_info,
-                          lambda self : self.fields), '返回数据')
+        Attribute('data', VarFieldsVector(UShort), '返回数据')
     )
 
 class Response_5503(message.Message, metaclass = ResponseMeta):
-    all_fields = (
+    all_fields_info = (
         Attribute('date', UInt, '日期'),
         Attribute('time', UInt, '时间'),
         Attribute('price', UInt, '价格'),
@@ -340,8 +299,7 @@ class Response_5503(message.Message, metaclass = ResponseMeta):
         Attribute('data_pos', UInt, '数据位置'),
         Attribute('need_clear_local', Byte, '是否需要清除本地数据'),
         Attribute('fields', ByteVector, '应答字段ID'),
-        Attribute('data', VarFieldsVector(UShort, all_fields,
-                     lambda self : self.fields,), '成交数据'),
+        Attribute('data', VarFieldsVector(UShort), '成交数据'),
     )
 
 class Response_5504(message.Message, metaclass = ResponseMeta):
@@ -605,17 +563,21 @@ class Response_5512(message.Message, metaclass = ResponseMeta):
         Attribute('pid', UShort, '协议标识'),
         Attribute('stock_id', String, '代码唯一标识'),
         Attribute('fields', ByteVector, '应答字段ID'),
-        Attribute('data', VarFields(all_fields_info,
-                       lambda self : self.fields), ''),
+        Attribute('data', VarFields, ''),
     )
 
 class Response_5513(message.Message, metaclass = ResponseMeta):
+    all_fields_info = TimeTrend.all_fields_info
+
     attributes_info = (
         Attribute('pid', UShort, '协议标识'),
         Attribute('stock_id', String, '代码唯一标识'),
-    ) + TimeTrend.attributes_info
+        Attribute('td', TimeTrend, '分时走势数据'),
+    )
 
 class Response_5514(message.Message, metaclass = ResponseMeta):
+    all_fields_info = Response_5503.all_fields_info
+
     attributes_info = (
         Attribute('pid', UShort, '协议标识'),
         Attribute('stock_id', String, '代码唯一标识'),
@@ -626,8 +588,7 @@ class Response_5514(message.Message, metaclass = ResponseMeta):
         Attribute('need_clear_local', Byte, '是否需要清除本地数据'),
         Attribute('data_pos', UInt, '数据位置'),
         Attribute('total_num', UShort, '数据总数'),
-        Attribute('data', VarFieldsVector(UShort, Response_5503.all_fields,
-                         lambda self : self.fields,), '成交数据'),
+        Attribute('data', VarFieldsVector(UShort), '成交数据'),
     )
 
 class Response_5515(message.Message, metaclass = ResponseMeta):
@@ -673,13 +634,13 @@ class Response_5515(message.Message, metaclass = ResponseMeta):
     )
 
 class Response_5516(message.Message, metaclass = ResponseMeta):
+    all_fields_info = Response_5501.all_fields_info
+
     attributes_info = (
         Attribute('pid', UShort, '协议标识'),
         Attribute('fields', ByteVector, '返回字段ID'),
         Attribute('total_num', UShort, '总数据个数'),
-        Attribute('data', VarFieldsVector(UShort,
-                        Response_5501.all_fields_info,
-                        lambda self : self.fields), '返回数据'),
+        Attribute('data', VarFieldsVector(UShort), '返回数据'),
     )
 
 class Response_5517(message.Message, metaclass = ResponseMeta):
@@ -727,14 +688,15 @@ class Response_5518(message.Message, metaclass = ResponseMeta):
     )
 
 class Push_5514(message.Message, metaclass = PushMeta):
+    all_fields_info = Response_5503.all_fields_info
+
     attributes_info = (
           Attribute('pid', UShort, '协议标识'),
           Attribute('stock_id', String, '代码唯一标识'),
           Attribute('fields', ByteVector, '应答字段ID'),
           Attribute('need_clear_local', Byte, '是否需要清除本地数据'),
           Attribute('total_num', UShort, '数据总数'),
-          Attribute('data', VarFieldsVector(UShort, Response_5503.all_fields,
-                       lambda self : self.fields), '分时成交数据'),
+          Attribute('data', VarFieldsVector(UShort), '分时成交数据'),
     )
 
 class Push_5516(message.Message, metaclass = PushMeta):
@@ -743,8 +705,7 @@ class Push_5516(message.Message, metaclass = PushMeta):
 
         attributes_info = (
             Attribute('fields', ByteVector, '返回字段'),
-            Attribute('fields_data', VarFields(all_fields_info,
-                            lambda self : self.fields), '')
+            Attribute('fields_data', VarFields, '')
         )
 
     attributes_info = (

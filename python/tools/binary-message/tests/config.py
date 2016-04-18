@@ -162,7 +162,7 @@ def create_parser(description=''):
 
 def parse_args(args, parser = None, **kwargs):
     defaults = dict(message=[], stock_id=None, address='88', port=1862,
-                    verbosity=2)
+                    verbosity=2, receive_push=False)
     defaults.update(kwargs)
     ns = argparse.Namespace(**defaults)
     if not parser:

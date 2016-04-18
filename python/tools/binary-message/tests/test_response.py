@@ -1,6 +1,7 @@
 from emoney.message import *
 from emoney.util import *
 import unittest
+import config
 
 class TestResponse(unittest.TestCase):
     def test_5515(self):
@@ -82,6 +83,18 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(t.tobytes(), b)
         self.assertEqual(t, r)
 
+def runtest(ns):
+    if ns.message.keys() == config.all_messages.keys():
+        suite = unittest.TestLoader().loadTestsFromTestCase(TestResponse)
+    else:
+        suite = unittest.TestSuite(map(TestResponse,
+                      ('test_{}'.format(x) for x in ns.message.keys())))
+
+    unittest.TextTestRunner(verbosity=ns.verbosity).run(suite)
+
 if __name__ == '__main__':
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestResponse)
-    unittest.TextTestRunner(verbosity=2).run(suite)
+    import sys
+
+    ns = config.parse_args(sys.argv[1:])
+
+    runtest(ns)
