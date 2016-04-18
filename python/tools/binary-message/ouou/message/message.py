@@ -228,10 +228,10 @@ class Message(BinaryObject):
         return self.header.is_push_msg()
 
     def is_asked_for_push(self):
-        return (self.header.msg_id > 5510 and getattr(self, 'push_type', None) == 1)
+        return (self.msg_id > 5510 and getattr(self, 'push_type', None) == 1)
 
     def is_multiple_message(self):
-        return self.header.msg_id == MSG_TYPE_MULTI
+        return self.msg_id == MSG_TYPE_MULTI
 
     @property
     def msg_id(self):
@@ -297,8 +297,10 @@ class Message(BinaryObject):
         Parse a message from the specified buffer. The buffer must be at least
         header.payload_size bytes.
         '''
-        if buf[-1] == ord('}'):
-            buf = buf[:-1]
+        plsize = header.payload_size
+        assert len(buf) >= plsize
+        if len(buf) > plsize and buf[plsize] == ord(MSG_TAIL):
+            buf = buf[:header.payload_size]
 
         return Message.fromstream(Reader(buf), header)
 
