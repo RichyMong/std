@@ -72,7 +72,7 @@ class TestMessage(unittest.TestCase):
 
     @save_config('request_5502')
     def test_message_5502(self):
-        sort_index = 4#random.randint(0, len(request_5502.fields) - 1)
+        sort_index = random.randint(0, len(request_5502.fields) - 1)
         request_5502.sort_field = request_5502.fields[sort_index]
         m = self.client.send_and_receive(request_5502)
         self.assertEqual(m.msg_id, request_5502.msg_id)

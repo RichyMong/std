@@ -17,16 +17,19 @@ Attribute = collections.namedtuple('Attribute', ['name', 'type', 'desc'])
 OptionalAttribute = collections.namedtuple('Attribute',
                      ['name', 'type', 'desc', 'condition'])
 
+class ParseError(Exception):
+    ''''''
+
 class Serializable(object):
+    def __init__(self, *args, **kwargs):
+        self.owner = kwargs.get('owner', None)
+
     @classmethod
     def fromstream(cls, reader, **kwargs):
         raise NotImplementedError('{}: fromstream'.format(cls.__name__))
 
     def tobytes(self):
         raise NotImplementedError('{}: tobytes'.format(cls.__name__))
-
-class ParseError(Exception):
-    ''''''
 
 class BinaryObject(Serializable):
     '''

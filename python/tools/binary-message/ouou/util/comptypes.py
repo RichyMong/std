@@ -2,12 +2,13 @@ import struct
 from .basetypes import *
 from .functions import *
 
-__all__ = [ 'TypeList', 'Array', 'Vector', 'ByteVector', 'CString', 'String', 'GBKString' ]
+__all__ = [ 'TypeList', 'Array', 'Vector', 'ByteVector',
+            'CString', 'String', 'GBKString' ]
 
 def CString(array_size, encoding = 'utf-8'):
     class Wrapped(str):
         @classmethod
-        def fromstream(cls, reader):
+        def fromstream(cls, reader, **kwargs):
             b = reader.read_bytes(array_size)
             return Wrapped(b.decode(encoding))
 
@@ -22,7 +23,7 @@ def CString(array_size, encoding = 'utf-8'):
 def EncodedString(encoding):
     class WrapperString(str):
         @classmethod
-        def fromstream(cls, reader):
+        def fromstream(cls, reader, **kwargs):
             n = reader.read_short()
             s = reader.read_bytes(n)
             return cls(s.decode(encoding = encoding))
@@ -83,7 +84,7 @@ def TypeList(elem_cls):
 def Array(array_size, elem_cls):
     class Wrapped(TypeList(elem_cls)):
         @classmethod
-        def fromstream(cls, reader):
+        def fromstream(cls, reader, **kwargs):
             return cls(reader.read_times(elem_cls, array_size))
 
         def __str__(self):
@@ -102,7 +103,7 @@ def Array(array_size, elem_cls):
 def Vector(size_cls, elem_cls):
     class Wrapped(TypeList(elem_cls)):
         @classmethod
-        def fromstream(cls, reader):
+        def fromstream(cls, reader, **kwargs):
             size = reader.read_type(size_cls)
             return cls(reader.read_times(elem_cls, size))
 

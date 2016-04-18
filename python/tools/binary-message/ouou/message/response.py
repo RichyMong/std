@@ -24,11 +24,14 @@ def VarArray(sizefunc, elem_cls):
     more than one VayArray attribute.
     '''
     class Wrapper(TypeList(elem_cls), Serializable):
+        def __init__(self, *args, **kwargs):
+            TypeList(elem_cls).__init__(self, *args)
+            Serializable.__init__(self, **kwargs)
+
         @classmethod
         def fromstream(cls, reader, **kwargs):
-            owner = kwargs.pop('owner')
             self = cls(**kwargs)
-            for i in range(sizefunc(owner)):
+            for i in range(sizefunc(self.owner)):
                 self.append(reader.read_type(elem_cls))
             return self
 
@@ -197,20 +200,49 @@ class Response_5500(message.MultipleMessage, metaclass = ResponseMeta):
 def MarketPrice(market_func, rep_cls = UInt, extra = 0):
     DIGITS = { 'HK' : 3, 'NASDAQ' : 2 }
     REPR_DIGIT = max(DIGITS.values())
-    class Wrapper(rep_cls, Serializable):
+    class Wrapper(Serializable):
+        def __init__(self, value = rep_cls(), **kwargs):
+            super().__init__(**kwargs)
+            self.value = value
+
         @classmethod
         def fromstream(cls, reader, **kwargs):
-            owner = kwargs.get('owner')
-            v = rep_cls.fromstream(reader)
-            market = market_func(owner)
-            for i in range(DIGITS[market], REPR_DIGIT):
-                v *= 10
-            cls.market = market
-            return cls(v)
+            self = cls(**kwargs)
+            self.value = rep_cls.fromstream(reader)
+            self.market = market_func(self.owner)
+            for i in range(DIGITS[self.market], REPR_DIGIT):
+                self.value *= 10
+            return self
+
+        def tobytes(self):
+            return rep_cls.pack(self.value)
+
+        def __getattr__(self, name):
+            return getattr(self, name)
+
+        def __eq__(self, other):
+            if type(self) in type(other):
+                return self.value == other.value
+            elif type(other) is int:
+                return self.value == other
+            else:
+                return False
+
+        def __lt__(self, other):
+            if type(self) in type(other):
+                return self.value < other.value
+            elif type(other) is int:
+                return self.value < other
+            else:
+                return False
+
+        def __gt__(self, other):
+            return not any(self < other, self == other)
+
 
         def __str__(self):
             if hasattr(self, 'market'):
-                t = self
+                t = self.value
                 for i in range(0, REPR_DIGIT):
                     t /= 10
                 return '{:.{}f}'.format(t, DIGITS[self.market])
