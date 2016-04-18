@@ -2,7 +2,7 @@ import asyncio
 import socket
 import errno
 import logging
-from emoney import message
+from ouou import message
 from datetime import datetime
 from ..util.basetypes import Char
 

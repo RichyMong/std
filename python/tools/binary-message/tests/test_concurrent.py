@@ -3,8 +3,8 @@ import logging
 import collections
 import argparse
 import config
-import emoney
-from emoney import util, message
+import ouou
+from ouou import util, message
 
 logging.basicConfig(format = '%(asctime)s %(name)-12s %(levelname)s %(message)s',
                 datefmt = '%F %T',
@@ -87,7 +87,7 @@ class ConcurrentCase(object):
 
     def run(self, ip, port):
         for i in range(self.count):
-            c = emoney.net.Client(self.loop)
+            c = ouou.net.Client(self.loop)
             c.set_message_callback(self.handle_message)
             c.set_state_callback(self.state_callback)
             self.connection_tp[c.cid] = util.get_milliseconds()

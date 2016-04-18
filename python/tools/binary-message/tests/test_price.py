@@ -2,11 +2,11 @@ import sys
 import asyncio
 import logging
 import collections
-import emoney
+import ouou
 import optparse
 import config
 from itertools import zip_longest
-from emoney import util, message
+from ouou import util, message
 
 logging.basicConfig(format = '%(asctime)s %(name)-12s %(levelname)s %(message)s',
                 datefmt = '%F %T',
@@ -46,7 +46,7 @@ class ConcurrentCase(object):
             print(line)
 
     def run(self, ip, port):
-        self.client = c = emoney.net.Client(self.loop)
+        self.client = c = ouou.net.Client(self.loop)
         c.set_message_callback(self.handle_message)
         c.set_state_callback(self.state_callback)
         c.connect((ip, port))

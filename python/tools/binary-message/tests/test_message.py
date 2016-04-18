@@ -2,7 +2,7 @@ import unittest
 import random
 import functools
 from config import *
-from emoney import net, message
+from ouou import net, message
 from datetime import datetime,timedelta,tzinfo
 
 class FixedOffset(tzinfo):

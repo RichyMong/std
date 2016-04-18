@@ -4,14 +4,14 @@ from collections import OrderedDict
 from datetime import datetime,timedelta
 
 try:
-    from emoney import util, message
+    from ouou import util, message
 except ImportError:
     import sys
     import os
     p = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
     if p not in sys.path:
         sys.path.append(p)
-    from emoney import util, message
+    from ouou import util, message
 
 SERVER = ('202.104.236.88', 1862)
 
