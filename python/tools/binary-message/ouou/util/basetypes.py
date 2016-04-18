@@ -1,25 +1,16 @@
 import struct
 
-__all__ = [ 'Char', 'Byte', 'Short', 'UShort', 'Int', 'DigitInt', 'UInt',
-            'LargeInt', 'Long', 'ULong' ]
+__all__ = [ 'Char', 'Byte', 'Short', 'UShort', 'Int',
+            'DigitInt', 'UInt', 'LargeInt', 'Long', 'ULong' ]
 
 BYTE_ORDER = '<'
-
-def size(obj):
-    '''
-    Though the sizes of most of the types are fixed, we use an instance
-    method so that we provide the same interfaces as the types which
-    are determined by instances, such as String, Vector.
-    '''
-    return type(obj).type_size
-
 
 class BaseTypeMeta(type):
     def __new__(meta, classname, supers, classdict):
         cls = type.__new__(meta, classname, supers, classdict)
-        cls.tobytes = lambda x : type(x).pack(x)
         cls.type_size = struct.calcsize(cls.pack_fmt)
-        cls.size = size
+        cls.size = lambda x : type(x).type_size
+        cls.tobytes = lambda x : type(x).pack(x)
 
         return cls
 

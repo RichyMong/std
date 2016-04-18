@@ -17,54 +17,18 @@ Attribute = collections.namedtuple('Attribute', ['name', 'type', 'desc'])
 OptionalAttribute = collections.namedtuple('Attribute',
                      ['name', 'type', 'desc', 'condition'])
 
-class ReadDepAttr(object):
+class Serializable(object):
     @classmethod
     def fromstream(cls, reader, **kwargs):
-        raise NotImplementedError('')
+        raise NotImplementedError('{}: fromstream'.format(cls.__name__))
 
-class WriteDepAttr(object):
-    def tobytes(self, owner):
-        raise NotImplementedError('')
-
-class DepAttr(ReadDepAttr, WriteDepAttr):
-    '''
-    Actually, if how to write the attribute depends on the owner, it's absolute
-    that the read also depends on the stream.
-    '''
+    def tobytes(self):
+        raise NotImplementedError('{}: tobytes'.format(cls.__name__))
 
 class ParseError(Exception):
     ''''''
 
-class BinaryObjectMeta(type):
-    def _fromstream(cls, reader, **kwargs):
-        self = cls(**kwargs)
-        for attr in self.attributes_info:
-            field, field_type, *extra = attr
-            if isinstance(attr, OptionalAttribute) and not extra[1](self):
-                continue
-
-            if issubclass(field_type, (ReadDepAttr, BinaryObject)):
-                dattr = field_type.fromstream(reader, owner = self)
-                if dattr is not None:
-                    setattr(self, field, dattr)
-            else:
-                try:
-                    setattr(self, field, reader.read_type(field_type))
-                except Exception as e:
-                    raise ParseError('{} - attribute: "{}", error: {}'.format(
-                             cls.__name__, field, e))
-
-        self.extra_parse(reader)
-
-        return self
-
-    def fromstream(cls, reader, **kwargs):
-        return cls._fromstream(reader, **kwargs)
-
-    def frombytes(cls, buf, **kwargs):
-        return cls.fromstream(Reader(buf), **kwargs)
-
-class BinaryObject(metaclass = BinaryObjectMeta):
+class BinaryObject(Serializable):
     '''
     '''
     attributes_info = ()
@@ -129,10 +93,7 @@ class BinaryObject(metaclass = BinaryObjectMeta):
                 if not isinstance(v, attr.type):
                     v = attr.type(v)
 
-                if issubclass(attr.type, WriteDepAttr):
-                    b += v.tobytes(self)
-                else:
-                    b += v.tobytes()
+                b += v.tobytes()
             except Exception as e:
                 raise RuntimeError("attribue '{}' in class {}: {}".format(
                        attr.name, cls_name, e))
@@ -140,6 +101,35 @@ class BinaryObject(metaclass = BinaryObjectMeta):
 
     def tobytes(self):
         return self.body2bytes()
+
+    @classmethod
+    def _fromstream(cls, reader, **kwargs):
+        self = cls(**kwargs)
+        for attr in self.attributes_info:
+            field, field_type, *extra = attr
+            if isinstance(attr, OptionalAttribute) and not extra[1](self):
+                continue
+
+            argus = {}
+            if issubclass(field_type, Serializable):
+                argus['owner'] = self
+            try:
+                setattr(self, field, reader.read_type(field_type, **argus))
+            except Exception as e:
+                raise ParseError('{} - attribute: "{}", error: {}'.format(
+                         cls.__name__, field, e))
+
+        self.extra_parse(reader)
+
+        return self
+
+    @classmethod
+    def fromstream(cls, reader, **kwargs):
+        return cls._fromstream(reader, **kwargs)
+
+    @classmethod
+    def frombytes(cls, buf, **kwargs):
+        return cls.fromstream(Reader(buf), **kwargs)
 
     def size(self):
         total_size = 0
@@ -152,8 +142,8 @@ class BinaryObject(metaclass = BinaryObjectMeta):
         pass
 
 def create_class(name, attributes):
-    return  BinaryObjectMeta.__new__(
-                BinaryObjectMeta,
+    return  type.__new__(
+                type,
                 name,
                 (BinaryObject, ),
                 { 'attributes_info' : attributes }
@@ -319,7 +309,7 @@ class Message(BinaryObject):
 
         return Message.allfromstream(Reader(buf), c2s = c2s)
 
-class MessageMeta(BinaryObjectMeta):
+class MessageMeta(type):
     '''
     This meta class will get message id from the class name. If the name is
     not it the format 'xxx_1234' or 'xxx1234' where 1234 is the MSG_ID,
@@ -357,7 +347,7 @@ class MultipleMessage(Message, metaclass = MessageMeta):
         self = cls(**kwargs)
         while reader.available() >= Header.type_size:
             m = Message.allfromstream(reader, owner = self,
-                                      c2s = kwargs.get('c2s', True))
+                                      c2s = kwargs.get('c2s', False))
             if not m:
                 raise ParseError('incomplete {} message'.format(cls.MSG_ID))
             self.add_message(m)

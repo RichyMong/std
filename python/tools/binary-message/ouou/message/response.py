@@ -2,7 +2,7 @@ import zlib
 import collections
 from functools import reduce
 from .import message
-from .message import Attribute, OptionalAttribute, BinaryObject, ReadDepAttr, DepAttr
+from .message import Attribute, OptionalAttribute, BinaryObject, Serializable
 from .const import *
 from ..util.stream import Reader
 from ..util import *
@@ -23,7 +23,7 @@ def VarArray(sizefunc, elem_cls):
     of sizefunc. If we did that, it would be impossible to use a class with
     more than one VayArray attribute.
     '''
-    class Wrapper(TypeList(elem_cls), ReadDepAttr):
+    class Wrapper(TypeList(elem_cls), Serializable):
         @classmethod
         def fromstream(cls, reader, **kwargs):
             owner = kwargs.pop('owner')
@@ -57,8 +57,6 @@ def VarFieldsVector(size_cls):
         it requires the 'owner' attribute), so do not use Vector(size_cls,
         VarFields) diretly.
         '''
-        attributes_info = ()
-
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
             self.values = []
@@ -194,12 +192,12 @@ class TimeTrend(message.BinaryObject):
     )
 
 class Response_5500(message.MultipleMessage, metaclass = ResponseMeta):
-    pass
+    ''''''
 
 def MarketPrice(market_func, rep_cls = UInt, extra = 0):
     DIGITS = { 'HK' : 3, 'NASDAQ' : 2 }
     REPR_DIGIT = max(DIGITS.values())
-    class Wrapper(rep_cls, ReadDepAttr):
+    class Wrapper(rep_cls, Serializable):
         @classmethod
         def fromstream(cls, reader, **kwargs):
             owner = kwargs.get('owner')
