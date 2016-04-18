@@ -46,8 +46,17 @@ class VarFields(BinaryObject):
         self.attributes_info = tuple(owner.all_fields_info[x - 1] for x in owner.fields)
         super().__init__(iterable, **kwargs)
 
+    def __getitem__(self, idx):
+        return getattr(self, self.attributes_info[idx].name, None)
+
 def VarFieldsVector(size_cls):
     class Wrapper(BinaryObject):
+        '''
+        A proxy class of util.Vector. The type of the vector's elements is
+        VarFields. We do not want to Vector to notice the logic of VarFields(
+        it requires the 'owner' attribute), so do not use Vector(size_cls,
+        VarFields) diretly.
+        '''
         attributes_info = ()
 
         def __init__(self, **kwargs):
@@ -70,15 +79,22 @@ def VarFieldsVector(size_cls):
 
             return b
 
+        def __len__(self):
+            return len(self.values)
+
+        def __getitem__(self, idx):
+            return self.values[idx]
+
         def __str__(self):
-            r = '共 {} 个'.format(len(self))
-            for i, x in enumerate(self):
+            r = '共 {} 个'.format(len(self.values))
+            for i, x in enumerate(self.values):
                 r += '{p}{sep}{no}{sep}{p}{x}'.format(p = PRINT_PREFIX,
                          sep = 30 * '-', no = i + 1, x = x)
             return r
 
         def __getattr__(self, name):
             return getattr(self.values, name)
+
     return Wrapper
 
 class PriceSeat(UInt):
@@ -572,7 +588,7 @@ class Response_5513(message.Message, metaclass = ResponseMeta):
     attributes_info = (
         Attribute('pid', UShort, '协议标识'),
         Attribute('stock_id', String, '代码唯一标识'),
-        Attribute('td', TimeTrend, '分时走势数据'),
+        Attribute('td', TimeTrend, ''),
     )
 
 class Response_5514(message.Message, metaclass = ResponseMeta):

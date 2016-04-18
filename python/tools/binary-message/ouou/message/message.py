@@ -45,7 +45,7 @@ class BinaryObjectMeta(type):
 
             if issubclass(field_type, (ReadDepAttr, BinaryObject)):
                 dattr = field_type.fromstream(reader, owner = self)
-                if dattr:
+                if dattr is not None:
                     setattr(self, field, dattr)
             else:
                 try:
@@ -98,9 +98,6 @@ class BinaryObject(metaclass = BinaryObjectMeta):
     def __iter__(self):
         for attr in self.attributes:
             yield getattr(self, attr.name)
-
-    def __getitem__(self, idx):
-        return getattr(self, self.attributes_info[idx].name, None)
 
     def __eq__(self, other):
         if isinstance(other, collections.Iterable):
