@@ -101,6 +101,7 @@ class ConcurrentCase(object):
                 logging.info('{} closed by remote'.format(c))
 
         elif new_state == c.CONNECTED:
+            print('connected to server')
             c.send_message(*self.messages_to_send)
 
 if __name__ == '__main__':

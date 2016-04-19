@@ -5,6 +5,8 @@ did, we would need to install the library every time it's modified.
 import sys
 import os
 
+PKG_NAME = 'ouou'
+
 script = os.path.abspath(__file__)
 
 def run_as_superuser():
@@ -31,12 +33,13 @@ except ValueError:
 if index in (-1, len(reverse) - 1):
     for path in sys.path:
         if path.endswith('site-packages')  or path.endswith('dist-packages'):
-            filepath = os.path.join(path, 'ouou-autotest.pth')
+            filepath = os.path.join(path, '{}-autotest.pth'.format(PKG_NAME))
             try:
                 with open(filepath, 'w') as f:
-                    print('writing', filepath)
                     f.write(wd + '\n')
+                    print('written', filepath)
             except PermissionError:
+                print('need root permission to write {}'.format(filepath))
                 run_as_superuser()
 
             break

@@ -20,6 +20,9 @@ class Client(base_client.BaseClient):
             LOGGER.error('connect to {}: {}'.format(addr, os.strerror(ec)))
 
     def set_loop(self, new_loop):
+        if not self._sock:
+            return
+
         if not self._loop:
             if self.state == self.CONNECTING:
                 self._loop.remove_writer(self._sock.fileno())
@@ -45,16 +48,11 @@ class Client(base_client.BaseClient):
         super()._close()
 
     def _data_ready(self):
-        '''
-        For performance concern, we do not call self.recv_message() here.
-        We may benefit from this if multiple messages are sent.
-        '''
         try:
             data = self._sock.recv(65536)
         except socket.error as e:
             if e.args[0] not in (errno.EWOULDBLOCK, errno.EAGAIN):
                 raise
-            self._close()
         else:
             if not len(data):
                 self._close()
