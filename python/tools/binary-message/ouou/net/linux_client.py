@@ -2,7 +2,7 @@ import os
 import socket
 import errno
 from . import base_client
-from ..message import Header, Message
+from ..message import Message
 
 LOGGER = base_client.LOGGER
 
@@ -70,7 +70,7 @@ class Client(base_client.BaseClient):
 
         e = self._sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         if not e:
-            self.change_state(self.CONNECTED)
+            self._change_state(self.CONNECTED)
             self._loop.add_reader(self._sock.fileno(), self._data_ready)
         else:
             LOGGER.error('connection: {}'.format(os.strerror(e)))

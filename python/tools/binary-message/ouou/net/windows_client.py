@@ -25,7 +25,7 @@ class Client(base_client.BaseClient):
             LOGGER.error('failed to connect: {}'.format(e))
             self._close()
         else:
-            self.change_state(self.CONNECTED)
+            self._change_state(self.CONNECTED)
 
     def _data_sent(self, of = None):
         f = self._loop.sock_recv(self._sock, Header.type_size)
