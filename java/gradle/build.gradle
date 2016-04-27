@@ -1,3 +1,14 @@
+apply plugin: 'java'
 apply plugin: 'application'
+
+jar {
+    manifest {
+        // make the target jar file executable through java -jar xxx.
+        attributes 'Main-Class': 'com.ouou.hello.Hello'
+    }
+
+    baseName = 'ouou-hello'
+    version =  '0.1.0'
+}
 
 mainClassName = 'com.ouou.hello.Hello'
