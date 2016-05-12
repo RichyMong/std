@@ -3,7 +3,8 @@ import unittest
 import random
 import functools
 import locale
-from config import *
+import config
+from messages import *
 from ouou import net, message
 from datetime import datetime,timedelta,tzinfo
 
@@ -55,7 +56,7 @@ def save_config(key = ''):
 class TestMessage(unittest.TestCase):
     def setUp(self):
         self.client = net.Client()
-        self.client.connect(SERVER)
+        self.client.connect(config.SERVER)
 
     @save_config('all')
     def test_message_5500(self):
@@ -165,7 +166,7 @@ class TestMessage(unittest.TestCase):
     def test_message_5508(self):
         m = self.client.send_and_receive(request_5508)
         self.assertEqual(m.msg_id, request_5508.msg_id)
-        self.assertEqual(m.server_version, SERVER_VERSION)
+        self.assertEqual(m.server_version, config.SERVER_VERSION)
 
     def test_message_5509(self):
         m = self.client.send_and_receive(request_5509)
@@ -271,6 +272,53 @@ class TestMessage(unittest.TestCase):
         m = self.client.send_and_receive(request_5518)
         self.assertEqual(m.result, 0)
 
+    @save_config()
+    def test_message_5519(self):
+        # 01250 20140609 001 0.06
+        # 01250 20150305 101
+        #             3.86  same
+        # 01513 20140708 001 0.6299
+        # 01513 20150702 001,002 -- 0.1
+        #             51.839 differ 51.819<EM>
+        # 01360 20140317 001 0.025
+        # 01360 20150922 101
+        #              4.925 same
+        # 01246 20150604 101
+        # 01246 20150821 002
+        #              4.45 same
+        # 01389 20160303 001 0.003
+        # 01389 20151123 001 0.005
+        # 01389 20150828 001 0.005
+        # 01389 20150623 001 0.01
+        # 01389 20150115 101 1:8
+        # 01389 20150302 001 0.01
+        # 01389 20140805 001 0.08
+        # 01389 20141124 001 0.1
+        #              26.414 differ 26.36<EM>
+        # 00586 20140523 001 0.25
+        # 00586 20150528 001 0.4
+        #              24.4 same
+        # 01082 20150707 002
+        # 01082 20150707 200
+        # 01082 20150527 100
+        # 01082 20160311 100
+        #              -0.126
+        # 00471 20140704 200
+        # 00471 20160317 200
+        # 00471 20140704 002
+        # 00471 20160317 002
+        #
+        # 01332 20150102 101 1:10
+        # 01332 20150105 002 1 - 1
+        # 01332 20150520 002 4 - 1
+        #               16.75
+        request_5519.start_time = 0
+        request_5519.req_num = 1
+        request_5519.restore_type = message.RESTORE_RIGHT_AFTER
+        m = self.client.send_and_receive(request_5519)
+        print(m)
+        self.assertEqual(len(m.data), 1)
+
     def tearDown(self):
         self.client.close()
 
@@ -286,6 +334,6 @@ def runtest(ns):
 if __name__ == '__main__':
     import sys
 
-    ns = parse_args(sys.argv[1:], receive_push=False)
+    ns = config.parse_args(sys.argv[1:], receive_push=False)
 
     runtest(ns)

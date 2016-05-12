@@ -1,3 +1,7 @@
+'''
+Define the basic types used by messages. We pack the types ourselves though
+int.to_bytes() is also suitable.
+'''
 import struct
 
 __all__ = [ 'Char', 'Byte', 'Short', 'UShort', 'Int',

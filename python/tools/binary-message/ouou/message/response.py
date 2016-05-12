@@ -1,3 +1,9 @@
+'''
+Process the response and push messages sent by the server.
+All the response and push message classes are supposed to define the
+`attributes_info` class attribute. For messages that process variable fields,
+they need to define `all_fields_info` as well
+'''
 import zlib
 import collections
 from functools import reduce
@@ -732,11 +738,12 @@ class Response_5518(message.Message, metaclass = ResponseMeta):
 
         def extra_parse(self, reader):
             b = bytearray(self.compressed_data)
+            bd_elem_size = 34 # sizeof broker_data_type
             data = zlib.decompress(b)
-            assert len(data) % 34 == 0
-            num = len(data) // 34
-            reader = Reader(data)
-            self.broker_data = Array(num, self.broker_data_type).fromstream(reader)
+            assert len(data) % bd_elem_size == 0
+            num = len(data) // bd_elem_size
+            self.broker_data = Array(num, self.broker_data_type).fromstream(
+                           Reader(data))
 
         def __str__(self):
             r = 'MD5: {}'.format(self.md5)
@@ -753,16 +760,47 @@ class Response_5518(message.Message, metaclass = ResponseMeta):
                         lambda self : self.result)
     )
 
+class Response_5519(message.Message, metaclass = ResponseMeta):
+    data_type = message.create_class(
+        'response_5519_data',
+        (
+            Attribute('date_time', Int, '时间'),
+            Attribute('open_price', Int, '开盘价'),
+            Attribute('highest_price', Int, '最高价'),
+            Attribute('lowest_price', Int, '最低价'),
+            Attribute('close_price', Int, '收盘价'),
+            Attribute('volume', LargeInt, '成交量'),
+            Attribute('amount', LargeInt, '成交额'),
+        )
+    )
+
+    attributes_info = (
+        Attribute('pid', UShort, '协议标识'),
+        Attribute('stock_id', String, '代码唯一标识'),
+        Attribute('need_clear_local_data', Byte, '是否需要清除本地数据'),
+        Attribute('price_digits', Byte, '价格类数据小数位数'),
+        Attribute('display_digits', Byte, '价格类显示小数位数'),
+        Attribute('data', Vector(UInt, data_type), '返回数据'),
+    )
+
+    def extra_parse(self, reader, **kwargs):
+        cls = DigitInt(self.price_digits)
+        for x in self.data:
+            x.open_price = cls(x.open_price)
+            x.highest_price = cls(x.highest_price)
+            x.lowest_price = cls(x.lowest_price)
+            x.close_price = cls(x.close_price)
+
 class Push_5514(message.Message, metaclass = PushMeta):
     all_fields_info = Response_5503.all_fields_info
 
     attributes_info = (
-          Attribute('pid', UShort, '协议标识'),
-          Attribute('stock_id', String, '代码唯一标识'),
-          Attribute('fields', ByteVector, '应答字段ID'),
-          Attribute('need_clear_local', Byte, '是否需要清除本地数据'),
-          Attribute('total_num', UShort, '数据总数'),
-          Attribute('data', VarFieldsVector(UShort), '分时成交数据'),
+        Attribute('pid', UShort, '协议标识'),
+        Attribute('stock_id', String, '代码唯一标识'),
+        Attribute('fields', ByteVector, '应答字段ID'),
+        Attribute('need_clear_local', Byte, '是否需要清除本地数据'),
+        Attribute('total_num', UShort, '数据总数'),
+        Attribute('data', VarFieldsVector(UShort), '分时成交数据'),
     )
 
 class Push_5516(message.Message, metaclass = PushMeta):

@@ -3,14 +3,6 @@ from .message import Attribute, Message, MessageMeta
 from .const import *
 from ..util import *
 
-__all__ = [
-            'Request_5501', 'Request_5502', 'Request_5503', 'Request_5504',
-            'Request_5505', 'Request_5506', 'Request_5508',
-            'Request_5509', 'Request_5510', 'Request_5511', 'Request_5512',
-            'Request_5513', 'Request_5514', 'Request_5515', 'Request_5516',
-            'Request_5517', 'Request_5518',
-           ]
-
 class RequestMeta(MessageMeta):
     def __new__(mcs, name, bases, attrs):
         cls = super().__new__(mcs, name, bases, attrs)
@@ -174,9 +166,22 @@ class Request_5518(Message, metaclass = RequestMeta):
         Attribute('md5', CString(33), 'MD5校验')
     )
 
+class Request_5519(Message, metaclass = RequestMeta):
+    attributes_info = (
+        Attribute('pid', UShort, '协议标识'),
+        Attribute('push_type', Byte, '推送类型'),
+        Attribute('stock_id', String, '代码唯一标识'),
+        Attribute('kline_type', Byte, 'K线类型'),
+        Attribute('start_time', Int, '开始时间'),
+        Attribute('req_num', UInt, '请求根数'),
+        Attribute('restore_type', Byte, '复权类型'),
+    )
+
 def analyze_hex(content):
     blob = bytearray.fromhex(content.replace('\n\t ', ''))
     if not len(blob):
         return
 
     print(Message.allfrombytes(blob))
+
+__all__ = [x for x in locals() if x.startswith('Request_')]

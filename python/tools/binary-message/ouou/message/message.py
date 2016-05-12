@@ -114,11 +114,11 @@ class BinaryObject(Serializable):
             if isinstance(attr, OptionalAttribute) and not extra[1](self):
                 continue
 
-            argus = {}
+            kargs = {}
             if issubclass(field_type, Serializable):
-                argus['owner'] = self
+                kargs['owner'] = self
             try:
-                setattr(self, field, reader.read_type(field_type, **argus))
+                setattr(self, field, reader.read_type(field_type, **kargs))
             except Exception as e:
                 raise ParseError('{} - attribute: "{}", error: {}'.format(
                          cls.__name__, field, e))

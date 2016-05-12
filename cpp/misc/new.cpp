@@ -17,5 +17,8 @@ private:
 
 int main() {
     auto x = new Test();
+    auto y = new int();
+    std::cout << *y << std::endl;
+    delete y;
     delete x;
 }
