@@ -1,0 +1,6 @@
+/*
+!.gitignore
+!mk_chp_dir.py
+!/chp*
+/chp*/*
+!/chp*/*.go
