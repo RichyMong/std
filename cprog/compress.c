@@ -9,10 +9,10 @@ int main(int argc, char* argv[])
 
     unsigned char buf[4196];
     unsigned long destlen = sizeof(buf);
-    int rc = compress2(buf, &destlen, message, strlen(message), 9);
+    int rc = compress2(buf, &destlen, (unsigned char*)message, strlen(message), 9);
     if (rc == Z_OK) {
         printf("compressed len: %lu\n", destlen);
-        for (int i = 0; i < destlen; ++i) {
+        for (unsigned long i = 0; i < destlen; ++i) {
             printf("%02X", buf[i]);
         }
         printf("\n");
