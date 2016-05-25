@@ -18,7 +18,7 @@ public:
     }
 
     static ListNode* reverseList2(ListNode* head) {
-        ListNode* tail = head;
+        auto tail = head;
 
         while (auto tmp = tail->next) {
             tail->next = tmp->next;
