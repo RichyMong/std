@@ -1,9 +1,6 @@
-import asyncio
 import socket
-import errno
 import logging
-from ouou import message
-from datetime import datetime
+from .. import message
 
 LOGGER = logging.getLogger("client")
 
@@ -35,6 +32,7 @@ class BaseClient(object):
     def __init__(self, loop = None):
         self.cid = BaseClient.next_cid()
         self.state = BaseClient.CLOSED
+        self.localaddr = None
         self._loop = loop
         self._sock = None
         self._message_callback = default_message_callback
@@ -42,7 +40,7 @@ class BaseClient(object):
         self._waited_response = []
         self._waited_push = set()
         self._ka_handle = None
-        self._recv_msg = None
+        self._buf = b''
 
     def connect(self, address):
         '''
@@ -128,6 +126,7 @@ class BaseClient(object):
         if len(msgs) > 1:
             multiple = message.MultipleMessage()
             for m in msgs:
+                LOGGER.debug('add sub message {} to multiple message'.format(m.msg_id))
                 self._add_waited_message(m)
                 multiple.add_message(m)
             self.send_data(multiple.tobytes())
@@ -136,7 +135,7 @@ class BaseClient(object):
             self.send_data(msgs[0].tobytes())
 
     def handle_message(self, msg):
-        msg_id = msg.header.msg_id
+        msg_id = msg.msg_id
         waiting = msg_id in self._waited_response
         if not msg.is_push_msg() and waiting:
             try:
@@ -147,6 +146,18 @@ class BaseClient(object):
 
         if msg_id != self.HeartBeat.MSG_ID or waiting:
             self._message_callback(self, msg)
+
+    def _handle_data(self, data):
+        if not len(data):
+            self._close()
+        else:
+            self._buf += data
+            while True:
+                p = message.Message.allfrombytes(self._buf)
+                if not p:
+                    break
+                self.handle_message(p)
+                self._buf = self._buf[p.size():]
 
     def _setup_connection(self):
         if self.state == BaseClient.CONNECTED:
@@ -182,10 +193,18 @@ class BaseClient(object):
         self.send_data(msg.tobytes())
 
     def _change_state(self, new_state):
+        if new_state == self.state:
+            return
+
+        LOGGER.debug('client<{}> state changed from [{}] to [{}]'.format(
+            self.cid, BaseClient.STATE[self.state], BaseClient.STATE[new_state]
+            ))
+
         self._state_callback(self, new_state)
         self.state = new_state
         if new_state == BaseClient.CONNECTED:
             self._keep_alive()
+            self.localaddr = '{}:{}'.format(*self._sock.getsockname())
 
     def _keep_alive(self):
         if self.state != BaseClient.CONNECTED:
@@ -196,9 +215,14 @@ class BaseClient(object):
         self.send_heartbeat()
 
     def _close(self):
+        if self.state == BaseClient.CLOSED:
+            return
+
         self._change_state(BaseClient.CLOSED)
         self._sock.close()
         self._sock = None
+        self._waited_response = []
+        self._waited_push = set()
         if self._ka_handle:
             self._ka_handle.cancel()
             self._ka_handle = None

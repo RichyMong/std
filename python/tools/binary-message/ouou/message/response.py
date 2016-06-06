@@ -276,8 +276,14 @@ def MarketPrice(market_func, rep_cls = UInt, extra = 0):
                 return super().__str__()
     return Wrapper
 
+def get_market(x):
+    if hasattr(x, 'stock_id'):
+        return x.stock_id.partition('|')[0]
+    else:
+        return 'HK'
+
 class Response_5501(message.Message, metaclass = ResponseMeta):
-    Price = MarketPrice(lambda x : x.stock_id.partition('|')[0])
+    Price = MarketPrice(get_market)
 
     # American markets use two digits int. However, it's tough for us to
     # deal with this situation. We need the stock_id or market_code to
@@ -738,12 +744,11 @@ class Response_5518(message.Message, metaclass = ResponseMeta):
 
         def extra_parse(self, reader):
             b = bytearray(self.compressed_data)
-            bd_elem_size = 34 # sizeof broker_data_type
             data = zlib.decompress(b)
-            assert len(data) % bd_elem_size == 0
-            num = len(data) // bd_elem_size
-            self.broker_data = Array(num, self.broker_data_type).fromstream(
-                           Reader(data))
+            assert len(data) % 34 == 0
+            num = len(data) // 34
+            reader = Reader(data)
+            self.broker_data = Array(num, self.broker_data_type).fromstream(reader)
 
         def __str__(self):
             r = 'MD5: {}'.format(self.md5)

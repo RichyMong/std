@@ -20,7 +20,7 @@ def run_as_superuser():
 req_version = (3, 4)
 if sys.version_info < req_version:
     raise RuntimeError('require version {}.{} or later'.format(
-              req_version[0], req_version[1j]))
+              req_version[0], req_version[1]))
 
 wd = os.path.dirname(script)
 reverse = sys.path[-1::-1]

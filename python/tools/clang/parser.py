@@ -16,6 +16,7 @@ def add_class_method(cursor, method):
     next_location = None
 
     for c in cursor.get_children():
+        print(c.kind, c.type.spelling, c.spelling, c.location)
         if c.kind == clang.cindex.CursorKind.CXX_METHOD:
             if c.spelling == 'setData':
                 last_location = c.location
@@ -36,7 +37,7 @@ def process_file(filename):
     from clang.cindex import Index
 
     index = Index.create()
-    tu = index.parse(None, filename)
+    tu = index.parse(None, filename + [ '-std=c++11', '-x', 'c++' ])
     if not tu:
         print("unable to load input")
 

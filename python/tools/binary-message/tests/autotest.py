@@ -2,6 +2,7 @@ import os
 import sys
 import unittest
 import importlib
+import config
 
 STD_TESTS = [
     'test_parser',
@@ -69,6 +70,7 @@ def runtest(test):
     test_runner()
 
 if __name__ == '__main__':
+    ns = config.parse_args(sys.argv[1:], receive_push=False)
     all_tests = findtests()
     for test in all_tests:
         runtest(test)

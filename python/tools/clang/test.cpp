@@ -1,3 +1,5 @@
+#include <vector>
+#include <string>
 #include "test.h"
 
 class Foo
@@ -5,17 +7,23 @@ class Foo
     int data_;
 
 public:
-    Foo(){}
+    Foo(std::vector<int>&){}
 
-    void setData(int data);
+    void setData(std::string data);
 
-    void setData(char data);
+    void setData(std::vector<int> data);
 
-    void setData(const char*);
-    void setData(const char*);
-    void setData(const char*);
+    void setData(std::vector<char> data);
 private:
     void setLocalData();
 };
 
-#endif
+void Foo::setData(std::string data)
+{
+   // do nothing
+}
+
+void Foo::setData(std::vector<int> data)
+{
+   // do nothing
+}

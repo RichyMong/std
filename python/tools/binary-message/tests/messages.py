@@ -59,7 +59,7 @@ request_5512 = message.Request_5512()
 request_5512.pid = 1
 request_5512.push_type = message.PUSH_TYPE_ONCE
 request_5512.stock_id = random.choice(sample_stocks)
-request_5512.fields = [52]
+request_5512.fields = [55,56,57]
 
 request_5513 = message.Request_5513()
 request_5513.pid = 1

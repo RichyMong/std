@@ -2,7 +2,6 @@ import os
 import socket
 import errno
 from . import base_client
-from ..message import Message
 
 LOGGER = base_client.LOGGER
 
@@ -54,16 +53,7 @@ class Client(base_client.BaseClient):
             if e.args[0] not in (errno.EWOULDBLOCK, errno.EAGAIN):
                 raise
         else:
-            if not len(data):
-                self._close()
-            else:
-                self._buf += data
-                while True:
-                    p = Message.allfrombytes(self._buf)
-                    if not p:
-                        break
-                    self.handle_message(p)
-                    self._buf = self._buf[p.size():]
+            self._handle_data(data)
 
     def _connection_made(self):
         self._loop.remove_writer(self._sock.fileno())

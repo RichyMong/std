@@ -1,10 +1,9 @@
 import asyncio
 import logging
 import collections
-import argparse
 import config
 import ouou
-from ouou import util, message
+from ouou import util
 
 logging.basicConfig(format = '%(asctime)s %(name)-12s %(levelname)s %(message)s',
                 datefmt = '%F %T',
@@ -65,11 +64,11 @@ class ConcurrentCase(object):
             total_trip.sort()
             once_trip.sort()
             total_summary.append((total_trip[0], total_trip[-1],
-                                sum(total_trip)/len(total_trip)))
+                                 int(sum(total_trip)/len(total_trip))))
             once_summary.append((once_trip[0], once_trip[-1],
-                                sum(once_trip)/len(once_trip)))
+                                 int(sum(once_trip)/len(once_trip))))
 
-        fmt = '{:<7} {:<6} {:<6} {:<6} {:<6} {:<6} {:<6}'
+        fmt = '{:<7} {:<6} {:<6} {:<7} {:<6} {:<6} {:<7}'
         logging.info(fmt.format('message', 'crmin', 'crmax', 'cravg', 'rrmin',
                                 'rrmax', 'rravg'))
         for (i, (tv, ov)) in enumerate(zip(total_summary, once_summary)):
@@ -121,7 +120,8 @@ class ConcurrentCase(object):
     def state_callback(self, c, new_state):
         if new_state == c.CLOSED:
             if c.state != c.CLOSING:
-                logging.info('{} closed by remote'.format(c))
+                logging.info('{}, local address {}, closed by remote'.format(c,
+                            c.localaddr))
                 if c.state == c.CONNECTING:
                     self.failed_connection += 1
                 else:

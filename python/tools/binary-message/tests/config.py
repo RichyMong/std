@@ -1,5 +1,3 @@
-import re
-import os
 import argparse
 import messages
 from ouou import net, message
@@ -8,13 +6,13 @@ from collections import OrderedDict
 SERVER = ('202.104.236.88', 1862)
 
 def get_server_version(gq_src_dir = '/home/meng/windows/code/linuxserver/global_quote/globalquote/'):
-    with open(os.path.expanduser(os.path.join(gq_src_dir,
-            'main/handle/General.h')), encoding = 'gbk') as f:
-        pattern = re.compile(r'#define +SERVER_VERSION +(\d+)')
-        for line in f:
-            m = pattern.match(line)
-            if m:
-                return int(m.group(1))
+    #with open(os.path.expanduser(os.path.join(gq_src_dir,
+    #        'main/handle/General.h')), encoding = 'gbk') as f:
+    #    pattern = re.compile(r'#define +SERVER_VERSION +(\d+)')
+    #    for line in f:
+    #        m = pattern.match(line)
+    #        if m:
+    #            return int(m.group(1))
     return 20160504
 
 SERVER_VERSION = get_server_version()

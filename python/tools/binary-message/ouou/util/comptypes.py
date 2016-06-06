@@ -83,13 +83,20 @@ def TypeList(elem_cls):
 
 def Array(array_size, elem_cls):
     class Wrapped(TypeList(elem_cls)):
+        if hasattr(elem_cls, 'type_size'):
+            type_size = array_size * elem_cls.type_size
+
         @classmethod
         def fromstream(cls, reader, **kwargs):
             return cls(reader.read_times(elem_cls, array_size))
 
         def __str__(self):
             if issubclass(elem_cls, str):
-                return ''.join(x for x in self)
+                try:
+                    idx = self.index('\0')
+                except:
+                    idx = -1
+                return ''.join(x for x in self[:idx])
             else:
                 return super().__str__()
 

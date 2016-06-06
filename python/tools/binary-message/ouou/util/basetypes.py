@@ -5,7 +5,8 @@ int.to_bytes() is also suitable.
 import struct
 
 __all__ = [ 'Char', 'Byte', 'Short', 'UShort', 'Int',
-            'DigitInt', 'UInt', 'LargeInt', 'Long', 'ULong' ]
+            'DigitInt', 'UInt', 'LargeInt', 'Long', 'ULong',
+            'Float', 'Double' ]
 
 BYTE_ORDER = '<'
 
@@ -102,3 +103,9 @@ class LargeInt(int, metaclass = BaseTypeMeta):
 
     def tobytes(self):
         return Int.pack(self.value)
+
+class Float(float, metaclass = BaseTypeMeta):
+    pack_fmt = 'f'
+
+class Double(float, metaclass = BaseTypeMeta):
+    pack_fmt = 'd'

@@ -75,7 +75,7 @@ class TestMessage(unittest.TestCase):
 
     @save_config('request_5502')
     def test_message_5502(self):
-        sort_index = 2 #random.randint(0, len(request_5502.fields) - 1)
+        sort_index = random.randint(0, len(request_5502.fields) - 1)
         request_5502.sort_field = request_5502.fields[sort_index]
         request_5502.sort_method = message.SORT_ORDER_DESC
         m = self.client.send_and_receive(request_5502)
@@ -88,11 +88,12 @@ class TestMessage(unittest.TestCase):
             if isinstance(v, str):
                 if sys.platform[0:5] != 'win32':
                     locale.setlocale(locale.LC_COLLATE, 'zh_CN.GBK')
+                    self.assertGreaterEqual(locale.strcoll(v, next_v), 0)
                 else:
                     # not worked (python3.5 windows7)
                     # locale.setlocale(locale.LC_COLLATE, ".936")
+                    # self.assertGreaterEqual(locale.strcoll(v, next_v), 0)
                     pass
-                self.assertGreaterEqual(locale.strcoll(v, next_v), 0)
             else:
                 # require as little as possible for the class, so we do not
                 # use assertGreaterEqual to express v >= next_v
@@ -316,7 +317,6 @@ class TestMessage(unittest.TestCase):
         request_5519.req_num = 1
         request_5519.restore_type = message.RESTORE_RIGHT_AFTER
         m = self.client.send_and_receive(request_5519)
-        print(m)
         self.assertEqual(len(m.data), 1)
 
     def tearDown(self):

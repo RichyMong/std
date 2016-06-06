@@ -120,8 +120,8 @@ class BinaryObject(Serializable):
             try:
                 setattr(self, field, reader.read_type(field_type, **kargs))
             except Exception as e:
-                raise ParseError('{} - attribute: "{}", error: {}'.format(
-                         cls.__name__, field, e))
+                print('{} - attribute: "{}", error: {}'.format(cls.__name__, field, e))
+                raise
 
         self.extra_parse(reader)
 
