@@ -30,6 +30,10 @@
 
 import os
 import ycm_core
+import subprocess
+import re
+
+STL_DIR_STUB = 'DIR_OF_SYSTEM_STL_HEADER'
 
 # These are the compilation flags that will be used in case there's no
 # compilation database set (by default, one is not set).
@@ -84,6 +88,17 @@ else:
   database = None
 
 SOURCE_EXTENSIONS = [ '.cpp', '.cxx', '.cc', '.c', '.m', '.mm' ]
+
+def DirectoryOfSTLHeader():
+  child = subprocess.Popen(['/usr/bin/g++', '--version'],
+                           stdout=subprocess.PIPE)
+  child.wait()
+  if child.returncode:
+      for line in child.stdout.read().decode().split('\n'):
+          m = re.search(r'g\+\+ \(GCC\) ([\d.]+) \d+', line)
+          if m:
+              return os.path.join('/usr/include/c++/', m.group(1))
+  return '.'
 
 def DirectoryOfThisScript():
   return os.path.dirname( os.path.abspath( __file__ ) )
