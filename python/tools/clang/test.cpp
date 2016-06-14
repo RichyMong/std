@@ -2,6 +2,8 @@
 #include <string>
 #include "test.h"
 
+static const int xx = XXX;
+
 class Foo
 {
     int data_;
