@@ -22,7 +22,8 @@ namespace util {
 
     template<typename F, typename... Args> inline
     auto timeit(F&& func, Args&&... args) ->
-    typename std::enable_if<!std::is_void<decltype(func(args...))>::value, Duration>::type
+    typename std::enable_if<!std::is_void<decltype(func(args...))>::value,
+             std::pair<decltype(func(args...)), Duration>>::type
     {
         using namespace std::chrono;
         using Clock = std::chrono::steady_clock;

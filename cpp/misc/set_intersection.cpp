@@ -67,6 +67,29 @@ void vector_compare(const vector<int>& a, const vector<int>& b,
     }
 }
 
+bool stl_find(set<int>& s, int v)
+{
+    auto it = s.find(v);
+    if (it != s.end()) {
+        s.erase(it);
+    }
+
+    return true;
+}
+
+bool linear_find(set<int>& s, int v)
+{
+    auto it = s.begin();
+    for (; it != s.end(); ++it) {
+        if (*it == v)  break;
+    }
+
+    if (it != s.end()) {
+        s.erase(v);
+    }
+    return true;
+}
+
 int main(int argc, char* argv[])
 {
     constexpr int SIZE = 10000;
@@ -85,4 +108,11 @@ int main(int argc, char* argv[])
     assert_equal(in_both, vin_both);
     assert_equal(in_a, vin_a);
     assert_equal(in_b, vin_b);
+
+    set<int> s(a.begin(), a.end());
+    auto find_result = util::timeit(stl_find, s, a.back());
+    cout << "stl_find use " << find_result.second.count() << '\n';
+    auto linear_result = util::timeit(linear_find, s, a.back());
+    cout << "linear_find use " << linear_result.second.count() << '\n';
+
 }
