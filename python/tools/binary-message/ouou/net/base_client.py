@@ -154,7 +154,7 @@ class BaseClient(object):
             self._buf += data
             while True:
                 p = message.Message.allfrombytes(self._buf)
-                if not p:
+                if p is None:
                     break
                 self.handle_message(p)
                 self._buf = self._buf[p.size():]
