@@ -197,16 +197,16 @@ def make_ycm_extra_conf(included_dirs):
         fp.write(YCM_CONF_TEMPLATE.replace('LOCAL_INCLUDE_FILE', local_included[:-1]))
 
 def get_src_dirs(nbcfg):
-    src_dirs = []
+    incdirs = []
 
-    if os.path.exists(nbcfg):
-        tree = ET.parse(nbcfg)
-        for conf in tree.iter('conf'):
-            for incdir in conf.iter('incDir'):
-                for elem in incdir.iter('pElem'):
-                    src_dirs.append(os.path.abspath(elem.text))
+    # The caller ensures the file exists
+    tree = ET.parse(nbcfg)
+    for conf in tree.findall('confs/conf'):
+        if conf.attrib['name'] == 'Debug':
+            for elem in conf.findall('compileType/ccTool/incDir/pElem'):
+                incdirs.append(os.path.abspath(elem.text))
             break
-    return src_dirs
+    return incdirs
 
 def make_tags(src_dirs):
     files = datetime.datetime.now().strftime('srcfile_%Y%m%d')

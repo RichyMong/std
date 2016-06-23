@@ -20,7 +20,7 @@ SERVER_VERSION = get_server_version()
 def create_parser(description=''):
     parser = argparse.ArgumentParser(description=description)
     group = parser.add_argument_group('server information')
-    group.add_argument('-a', '--address', action='store', default='88',
+    group.add_argument('-a', '--address', action='store', default='84',
                          help='ip address or an integer in which case the'+
                              ' address will be 202.104.236.xx, default 88')
     group.add_argument('-p', '--port', action='store', type = int, default=1862,

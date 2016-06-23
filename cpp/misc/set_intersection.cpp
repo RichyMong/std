@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <random>
 #include <set>
+#include <string>
+#include <map>
 #include <assert.h>
 #include "../utils/util.h"
 
@@ -48,6 +50,21 @@ void compare(const vector<int>& a, const vector<int>& b,
     std::set_intersection(newa.begin(), newa.end(), newb.begin(), newb.end(), back_inserter(in_both));
     std::set_difference(newa.begin(), newa.end(), newb.begin(), newb.end(), back_inserter(in_a));
     std::set_difference(newb.begin(), newb.end(), newa.begin(), newa.end(), back_inserter(in_b));
+}
+
+void map_intersection()
+{
+    struct MapValueCompare {
+        bool operator()(const pair<int, string>& lhs, const pair<int, string>& rhs) {
+            return lhs.first < rhs.first;
+        }
+    } compareObj;
+
+    map<int, string> a { {1, "a"} , {2, "b"}, {3, "c"} };
+    map<int, string> b { {1, "a"} , {2, "c"}, {5, "d"} };
+    vector<pair<int, string>> in_both;
+    std::set_intersection(a.begin(), a.end(), b.begin(), b.end(), back_inserter(in_both),  compareObj);
+    for (auto & x : in_both) cout << x.first << endl;
 }
 
 void vector_compare(const vector<int>& a, const vector<int>& b,
@@ -115,4 +132,5 @@ int main(int argc, char* argv[])
     auto linear_result = util::timeit(linear_find, s, a.back());
     cout << "linear_find use " << linear_result.second.count() << '\n';
 
+    map_intersection();
 }

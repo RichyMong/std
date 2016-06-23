@@ -40,7 +40,10 @@ private:
 };
 
 int main() {
-    xsets.insert(make_shared<X>(2));
+    auto s1 = make_shared<X>(2);
+    auto s2 = s1;
+    cout << (s1 == s2) << endl;
+    xsets.insert(s1);
     Y y(*xsets.begin());
     y.show();
     cout << xsets.size() << endl;
