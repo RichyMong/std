@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 
 project(hello)
 
-option( USE_PYTHON2 "If on, link to Python 2 instead of 3" OFF  )
+option( USE_PYTHON2 "If on, link to Python 2 instead of 3" ON  )
 
 message("${PYTHON_INCLUDE_DIRS}")
 
@@ -20,6 +20,8 @@ include_directories(
 file(GLOB PROJECT_SOURCE *.h *.cpp)
 
 find_package( Boost REQUIRED COMPONENTS python )
+
+add_definitions(-std=c++11)
 
 add_library(${PROJECT_NAME}
             SHARED
