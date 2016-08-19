@@ -29,31 +29,31 @@ public:
         if (v == 0) return 0;
         if (beg == end) return -1;
 
-        auto it = lower_bound(beg, end, v);
-        if (it != end && *it == v) {
-            return 1;
-        } else if (it == beg){
-            return -1;
-        } else {
-            --it;
+        auto last = end - 1;
+        auto steps = v / *last;
+        if (v % *last == 0) {
+            return steps;
         }
 
-        auto k = v / *it;
-        auto x = v % *it;
         auto mink = v + 1;
-        auto n = coinChange(beg, end, x);
-        if (n >= 0) {
-            mink = n + k;
-        }
-        for (int i = 1; i < k; ++i) {
-            auto v = x + i * *it;
-            auto n = coinChange(beg, it, v);
+        for (int k = steps; k >= 0; --k) {
+            auto x = v - k * *last;
+            if (beg != end - 1) {
+                auto y = *(last - 1);
+                if (k + ((x + y - 1) / y) >= mink) break;
+            }
+            auto n = coinChange(beg, end - 1, x);
             if (n >= 0) {
-                auto temp = n + k - i;
-                if (temp < mink) mink = temp;
+                mink = min(mink, n + k);
             }
         }
         return mink > v ? -1 : mink;
+    }
+
+    static int coinChange(vector<int>& coins, int amount) {
+        sort(coins.begin(), coins.end());
+
+        return coinChange(coins.begin(), coins.end(), amount);
     }
 
     static int coinChangeDP(vector<int>& coins, int amount) {
@@ -68,12 +68,6 @@ public:
         }
         return steps[amount] > amount ? -1 : steps[amount];
     }
-
-    static int coinChange(vector<int>& coins, int amount) {
-        sort(coins.begin(), coins.end());
-
-        return coinChange(coins.begin(), coins.end(), amount);
-    }
 };
 
 int main()
@@ -81,13 +75,16 @@ int main()
     vector<int> vi { 186,419,83,408 };
     vector<int> vii { 500,200,400};
     vector<int> v3 { 9, 8, 1 };
-    // cout << Solution::coinChange(vi, 6249) << endl;
-    // cout << Solution::coinChange(vii, 1600) << endl;
-    // cout << Solution::coinChange(vii, 10) << endl;
+    vector<int> v4 { 3, 7, 405, 436 };
+    cout << Solution::coinChange(vi, 6249) << endl;
+    cout << Solution::coinChange(vii, 1600) << endl;
+    cout << Solution::coinChange(vii, 10) << endl;
     cout << Solution::coinChange(v3, 32) << endl;
+    cout << Solution::coinChange(v4, 8839) << endl;
     cout << Solution::coinChangeDP(vi, 6249) << endl;
     cout << Solution::coinChangeDP(vii, 1600) << endl;
     cout << Solution::coinChangeDP(vii, 10) << endl;
     cout << Solution::coinChangeDP(v3, 32) << endl;
+    cout << Solution::coinChangeDP(v4, 8839) << endl;
     return 0;
 }
