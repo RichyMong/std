@@ -4,10 +4,16 @@ import bs4
 import requests
 import os
 import sys
-import urlparse
 import string
 import collections
-import urlparse
+
+if sys.version_info.major == 3:
+    raw_input = input
+    import urllib
+    urljoin = urllib.parse.urljoin
+else:
+    import urlparse
+    urljoin = urlparse.urljoin
 
 base_url = 'https://leetcode.com/problemset/algorithms/'
 
@@ -34,7 +40,7 @@ def get_solution_title(sno):
 
         cols = [col.text.strip() for col in records]
         if sno is None or sno == int(cols[1]):
-            url = urlparse.urljoin('https://leetcode.com', href.get('href'))
+            url = urljoin('https://leetcode.com', href.get('href'))
             bsoup = bs4.BeautifulSoup(requests.get(url).text)
             content = bsoup.find_all('p')
             yield Problem(cols[1], cols[2], url, content[0].text)
@@ -118,8 +124,7 @@ with open('problems.txt', 'r+') as f:
             existed_problems[sno] = problem.title
 
             with open(cpp_file, 'w') as cpp_f:
-                title_content = make_title_content(problem.title, problem.content.encode('ascii',
-                            'ignore').strip('\r\n').replace('\n\n', '\n').replace('\n', '\n// '))
+                title_content = make_title_content(problem.title, problem.content.strip('\r\n').replace('\n\n', '\n').replace('\n', '\n// '))
                 file_content = fc_template.substitute(title_content = title_content,
                             url = problem.url).replace('\r', '')
                 cpp_f.write(file_content)

@@ -5,29 +5,31 @@
 // https://leetcode.com/problems/divide-two-integers/
 #include "solution.h"
 #include <limits>
+#include <cstdlib>
 
 using namespace std;
 
 class Solution {
 public:
     static int divide(int dividend, int divisor) {
-        if (!dividend || !divisor) return 0;
+        if (!divisor || (dividend == std::numeric_limits<int>::min() && divisor == -1))
+            return std::numeric_limits<int>::max();
 
         bool same_sign = (dividend > 0 && divisor > 0) ||
                          (dividend < 0 && divisor < 0);
         long result = 0;
 
-        if (dividend > 0) dividend = -dividend;
-        if (divisor > 0) divisor = -divisor;
+        long long x = labs(dividend);
+        long long y = labs(divisor);
 
-        for (int x = 0; ; x += divisor) {
-            if (++result == std::numeric_limits<int>::max())
-                return result;
-
-            if (x == dividend ||
-                x == std::numeric_limits<int>::min() ||
-                x == std::numeric_limits<int>::max())
-                break;
+        while (x >= y) {
+            long long z = y, k = 1;
+            while (x >= (z << 1)) {
+                z <<= 1;
+                k <<= 1;
+            }
+            result += k;
+            x -= z;
         }
 
         return same_sign ? result : -result;
