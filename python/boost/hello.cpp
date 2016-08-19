@@ -34,6 +34,27 @@ struct Overload {
     std::vector<int> numbers_;
 };
 
+bool operator==(const Overload& lhs, const Overload& rhs)
+{
+    return lhs.numbers_ == rhs.numbers_;
+}
+
+std::ostream& operator<<(std::ostream& os, const Overload& ol)
+{
+    os << "[";
+    for (auto x : ol.numbers_) {
+        os << " " << x;
+    }
+    os << "]";
+
+    return os;
+}
+
+std::vector<Overload> get_vec()
+{
+    return std::vector<Overload> {  Overload(Dim{1,2,3}), Overload(Dim{11, 22, 33}) };
+}
+
 Overload get()
 {
     return Overload(Dim{1,2,3});
@@ -47,11 +68,17 @@ BOOST_PYTHON_MODULE(hello)
         .def("f", (void(*)(int))Overload::f)
         .def("f", (void(*)(const std::string&))Overload::f)
         .staticmethod("f")
+        .def(boost::python::self == boost::python::self)
+        .def( self_ns::str(self_ns::self) )
         ;
 
     class_< std::vector< int > >( "IntVector" )
       .def( vector_indexing_suite< std::vector< int > >() );
 
+    class_< std::vector< Overload > >( "OverloadVector" )
+      .def( vector_indexing_suite< std::vector< Overload > >() );
+
     def("print", &print);
     def("get", &get);
+    def("get_vec", &get_vec);
 }

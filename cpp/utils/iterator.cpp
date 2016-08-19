@@ -1,115 +1,58 @@
 #include <vector>
 #include <iostream>
 #include <map>
-#include <type_traits>
-#include <cstddef>
-#include <iterator>
+#include <chrono>
+#include <string>
+#include <sstream>
+#include "iterator.h"
 
-template <class MapIterator>
-class ValueIterator {
-public:
-    typedef typename MapIterator::value_type::second_type  value_type;
-    typedef const value_type& reference;
-    typedef const value_type* pointer;
+using namespace std;
+using namespace std::chrono;
+using namespace util;
 
-    typedef std::bidirectional_iterator_tag iterator_category;
-    typedef ptrdiff_t difference_type;
+template <class Iterator>
+void doIt(Iterator begin, Iterator end)
+{
+    ostringstream oss;
+    while (begin != end) {
+        oss << *begin++;
+    }
+}
 
-    explicit ValueIterator(MapIterator map_iterator)
-        : map_iterator_ { map_iterator }
-    {
+int main(int argc, char* argv[])
+{
+    map<int, int> name_map { { 10, 1 }, { 100, 2 }, { 1000, 3 } };
+    cout << distance(name_map.rbegin(), name_map.rend()) << endl;
+    cout << distance(key_iterator(name_map.begin()), key_iterator(name_map.end())) << endl;
+    vector<int> vi(key_iterator(name_map.begin()), key_iterator(name_map.end()));
+    ostream_iterator<int> osi(cout, " ");
+    copy(key_iterator(name_map.begin()), key_iterator(name_map.end()), osi);
+    cout << "\n";
+
+    const int size = (argc > 1) ? atoi(argv[1]) : 1000000;
+    using clock_cls = high_resolution_clock;
+
+    map<string, int> huge_map;
+    for (int i = 0; i < size; ++i) {
+        string str = "prefix" + to_string(i);
+        huge_map[str] = i + 1;
     }
 
-    reference operator*() const
-    { return map_iterator_->second; }
-
-    pointer operator->() const
-    { return &map_iterator_->second; }
-
-    ValueIterator& operator++()
-    { ++map_iterator_; return *this; }
-
-    ValueIterator operator++(int) const
-    { MapIterator next = map_iterator_; return ValueIterator(++next); }
-
-    friend bool operator==(const ValueIterator& lhs,
-                    const ValueIterator& rhs)
-    { return lhs.map_iterator_ == rhs.map_iterator_; }
-
-private:
-    MapIterator map_iterator_;
-};
-
-template <class MapIterator>
-class KeyIterator {
-public:
-    typedef typename MapIterator::value_type::first_type value_type;
-    typedef const value_type& reference;
-    typedef const value_type* pointer;
-
-    typedef std::bidirectional_iterator_tag iterator_category;
-    typedef ptrdiff_t                  difference_type;
-
-    explicit KeyIterator(MapIterator map_iterator)
-        : map_iterator_ { map_iterator }
+    auto start = clock_cls::now();
     {
+        vector<int> converted;
+        converted.reserve(huge_map.size());
+        for (auto it = huge_map.begin(); it != huge_map.end(); ++it) {
+            converted.push_back(it->second);
+        }
+        doIt(converted.begin(), converted.end());
     }
-
-    reference operator*() const
-    { return map_iterator_->first; }
-
-    pointer operator->() const
-    { return &map_iterator_->first; }
-
-    KeyIterator& operator++()
-    { ++map_iterator_; return *this; }
-
-    KeyIterator operator++(int)
-    { MapIterator next = map_iterator_; return KeyIterator(++next); }
-
-    friend bool operator==(const KeyIterator& lhs,
-                    const KeyIterator& rhs)
-    { return lhs.map_iterator_ == rhs.map_iterator_; }
-
-private:
-    MapIterator map_iterator_;
-};
-
-template <class _Iterator>
-inline ValueIterator<_Iterator> value_iterator(const _Iterator& it)
-{
-    return ValueIterator<_Iterator>(it);
-}
-
-template <class MapIterator>
-inline bool operator!=(const ValueIterator<MapIterator>& lhs,
-                const ValueIterator<MapIterator>& rhs)
-{
-    return !(lhs == rhs);
-}
-
-template <class _Iterator>
-inline KeyIterator<_Iterator> key_iterator(const _Iterator& it)
-{
-    return KeyIterator<_Iterator>(it);
-}
-
-template <class MapIterator>
-inline bool operator!=(const KeyIterator<MapIterator>& lhs,
-                const KeyIterator<MapIterator>& rhs)
-{
-    return !(lhs == rhs);
-}
-
-int main()
-{
-    std::map<int, int> name_map { { 10, 1 }, { 100, 2 }, { 1000, 3 } };
-    std::cout << std::distance(name_map.rbegin(), name_map.rend()) << std::endl;
-    std::cout << std::distance(key_iterator(name_map.begin()), key_iterator(name_map.end())) << std::endl;
-    std::vector<int> vi(key_iterator(name_map.begin()), key_iterator(name_map.end()));
-    std::ostream_iterator<int> osi(std::cout, " ");
-    std::copy(key_iterator(name_map.begin()), key_iterator(name_map.end()), osi);
-    std::cout << "\n";
+    auto end = clock_cls::now();
+    cout << "map to vector method:" << duration_cast<nanoseconds>(end - start).count() << endl;
+    start = clock_cls::now();
+    doIt(value_iterator(huge_map.begin()), value_iterator(huge_map.end()));
+    end = clock_cls::now();
+    cout << "value iterator method:" << duration_cast<nanoseconds>(end - start).count() << endl;
     return 0;
 }
 
