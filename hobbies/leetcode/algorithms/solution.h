@@ -58,7 +58,7 @@ inline void print_tree(TreeNode* root) {
     print_tree(root->right);
 }
 
-static ListNode* create_list(const std::initializer_list<int>& nums)
+static inline ListNode* create_list(const std::initializer_list<int>& nums)
 {
     ListNode* head = nullptr;
     ListNode* pos = nullptr;

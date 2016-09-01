@@ -96,3 +96,6 @@
 278 First Bad Version
 283 Move Zeroes
 322 Coin Change
+349 Intersection of Two Arrays
+350 Intersection of Two Arrays II
+371 Sum of Two Integers
