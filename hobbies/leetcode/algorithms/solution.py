@@ -6,6 +6,7 @@ import os
 import sys
 import string
 import collections
+import json
 
 if sys.version_info.major == 3:
     raw_input = input
@@ -15,9 +16,37 @@ else:
     import urlparse
     urljoin = urlparse.urljoin
 
-base_url = 'https://leetcode.com/problemset/algorithms/'
+base_url = 'https://leetcode.com/api/problems/algorithms/'
 
-Problem = collections.namedtuple('Problem', ['number', 'title', 'url', 'content'])
+Problem = collections.namedtuple('Problem', ['number', 'title', 'url',
+                                             'content', 'decl'])
+
+def find_default_code(text, lang):
+    prefix = 'aceCtrl.init('
+    if not text.startswith(prefix):
+        return None
+    text = text[len(prefix):]
+    text = text.strip()
+    assert text[0] == '['
+    parenths = []
+    x = ''
+    for i in range(1, len(text)):
+        if text[i] == ']':
+            if not parenths:
+                x = text[:i+1]
+                break
+            text.pop(0)
+
+        if text[i] == '[':
+            parenths.append(text[i])
+
+    x = x.replace("'", '"')
+    x = x[:-2] + ']'
+    obj = json.loads(x)
+    for z in obj:
+        if z['text'].upper() == lang.upper():
+            return z['defaultCode']
+    return None
 
 def get_solution_title(sno):
     try:
@@ -28,22 +57,17 @@ def get_solution_title(sno):
     if response.status_code != requests.codes.ok:
         print(response.text)
 
-    bsoup = bs4.BeautifulSoup(response.text)
-    table = bsoup.find('table', id='problemList')
-    table_body = table.find('tbody')
-
-    rows = table_body.find_all('tr')
-    for row in rows:
-        # class number title accept difficulty
-        records = row.find_all('td')
-        href = records[2].find('a')
-
-        cols = [col.text.strip() for col in records]
-        if sno is None or sno == int(cols[1]):
-            url = urljoin('https://leetcode.com', href.get('href'))
+    json_response = json.loads(response.text)
+    for row in json_response['stat_status_pairs']:
+        stat = row['stat']
+        if sno is None or sno == int(stat['question_id']):
+            title = stat['question__title_slug']
+            url = 'https://leetcode.com/problems/{}'.format(title)
             bsoup = bs4.BeautifulSoup(requests.get(url).text)
+            attr = bsoup.find('div', { 'ng-controller' : 'AceCtrl as aceCtrl' })
+            default_code = find_default_code(attr['ng-init'], 'c++')
             content = bsoup.find_all('p')
-            yield Problem(cols[1], cols[2], url, content[0].text)
+            yield Problem(sno, title, url, content[0].text, default_code)
             if sno is not None:
                 break
 
@@ -57,11 +81,7 @@ fc_template = string.Template(u'''${title_content}
 
 using namespace std;
 
-class Solution {
-public:
-    static
-
-};
+${default_code}
 
 int main()
 {
@@ -70,7 +90,8 @@ int main()
 ''')
 
 def make_title_content(title, content):
-    max_len = 80 - len('// ')
+    prefix = '// '
+    max_len = 80 - len(prefix)
 
     result = ''
 
@@ -80,7 +101,7 @@ def make_title_content(title, content):
         end = max_len - 1
 
         lspace = end
-        left = end - 3
+        left = end - len(prefix)
         while lspace >= left and s[lspace].isalnum():
             lspace -= 1
 
@@ -109,7 +130,7 @@ with open('problems.txt', 'r+') as f:
     existed_problems = {}
     for line in f:
         k, v = line.split(' ', 1)
-        existed_problems[k] = v
+        existed_problems[int(k)] = v
 
     sno = int(sys.argv[1])
     cpp_file = 'solution_{}.cpp'.format(sno)
@@ -126,7 +147,7 @@ with open('problems.txt', 'r+') as f:
             with open(cpp_file, 'w') as cpp_f:
                 title_content = make_title_content(problem.title, problem.content.strip('\r\n').replace('\n\n', '\n').replace('\n', '\n// '))
                 file_content = fc_template.substitute(title_content = title_content,
-                            url = problem.url).replace('\r', '')
+                            url = problem.url, default_code=problem.decl).replace('\r', '')
                 cpp_f.write(file_content)
 
         f.seek(0)
