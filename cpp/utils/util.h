@@ -9,8 +9,8 @@ namespace util {
 
     using Duration = std::chrono::microseconds;
 
-    template<typename F, typename... Args> inline
-    auto timeit(F&& func, Args&&... args) ->
+    template <typename F, typename... Args>
+    inline auto timeit(F&& func, Args&&... args) ->
     typename std::enable_if<std::is_void<decltype(func(args...))>::value, Duration>::type
     {
         using namespace std::chrono;
@@ -20,8 +20,8 @@ namespace util {
         return duration_cast<Duration>(Clock::now() - start_tp);
     }
 
-    template<typename F, typename... Args> inline
-    auto timeit(F&& func, Args&&... args) ->
+    template <typename F, typename... Args>
+    inline auto timeit(F&& func, Args&&... args) ->
     typename std::enable_if<!std::is_void<decltype(func(args...))>::value,
              std::pair<decltype(func(args...)), Duration>>::type
     {

@@ -19,7 +19,7 @@ using namespace std;
 class Solution {
 public:
     ListNode* rotateRight(ListNode* head, int k) {
-        if (k <= 1 || !head || !head->next) return head;
+        if (!head || !head->next) return head;
 
         int size = 1;
         auto tail = head;
@@ -29,7 +29,8 @@ public:
         }
 
         tail->next = head;
-        if (k % size) {
+        k %= size;
+        if (k) {
             for (int i = 0; i < (size - k); i++) {
                 tail = tail->next;
             }

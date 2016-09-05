@@ -5,6 +5,7 @@
 #include <string>
 #include <type_traits>
 #include <string.h>
+#include <assert.h>
 #include "types.h"
 
 namespace util {
@@ -29,7 +30,7 @@ public:
             return false;
         }
 
-        memcpy(buffer_ + offset_, &x, sizeof(_Type));
+        ::memcpy(buffer_ + offset_, &x, sizeof(_Type));
 
         offset_ += sizeof(_Type);
         return true;
@@ -44,7 +45,7 @@ public:
             return false;
         }
 
-        memcpy(buffer_ + offset_, x, needed);
+        ::memcpy(buffer_ + offset_, x, needed);
         offset_ += needed;
 
         return true;
@@ -84,28 +85,23 @@ public:
         return size_ - offset_;
     }
 
-    char readChar() const {
-        char c;
-        read(c);
-
-        return c;
+#define READ_FUNCTION(type)                 \
+    type read_##type() const {              \
+        assert(readable() >= sizeof(type)); \
+        type x;                             \
+        read(x);                            \
+        return x;                           \
     }
 
-    int readInt() const {
-        int n;
-
-        read(n);
-
-        return n;
-    }
-
-    int readShort() const {
-        short n;
-
-        read(n);
-
-        return n;
-    }
+    // Helper functions. The caller must be sure readable() >= sizeof(type)
+    READ_FUNCTION(char);
+    READ_FUNCTION(int);
+    READ_FUNCTION(short);
+    READ_FUNCTION(long);
+    READ_FUNCTION(uchar);
+    READ_FUNCTION(ushort);
+    READ_FUNCTION(uint);
+    READ_FUNCTION(ulong);
 
     template <typename _SizeType>
     std::string readString() const {
@@ -122,7 +118,7 @@ public:
             return false;
         }
 
-        memcpy(&x, buffer_ + offset_, sizeof(_Type));
+        ::memcpy(&x, buffer_ + offset_, sizeof(_Type));
 
         offset_ += sizeof(_Type);
         return true;
@@ -137,7 +133,7 @@ public:
             return false;
         }
 
-        memcpy(buffer_ + offset_, x, needed);
+        ::memcpy(x, buffer_ + offset_, needed);
         offset_ += needed;
 
         return true;

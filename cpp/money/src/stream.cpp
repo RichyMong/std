@@ -17,7 +17,7 @@ int main(int argc, const char *argv[])
     bs.write<uint>(abc);
 
     util::InputBufferStream rbs(bs.buffer_, bs.offset_);
-    short x = rbs.readShort();
+    short x = rbs.read_short();
     std::cout << x << std::endl;
 
     std::string s;

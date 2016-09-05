@@ -5,6 +5,7 @@
 #include <iostream>
 
 using byte = unsigned char;
+using uchar = unsigned char;
 using uint = unsigned int;
 using ushort = unsigned short;
 using ulong = unsigned long;
