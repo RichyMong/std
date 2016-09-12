@@ -35,7 +35,7 @@ def find_default_code(text, lang):
             if not parenths:
                 x = text[:i+1]
                 break
-            text.pop(0)
+            parenths.pop(0)
 
         if text[i] == '[':
             parenths.append(text[i])
