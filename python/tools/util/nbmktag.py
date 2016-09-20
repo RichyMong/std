@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 import os
 import sys
-import datetime
 import subprocess
+import argparse
+import os.path as op
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 SUPPORTED_EXTENSIONS = ('c', 'cpp', 'cc', 'h', 'hpp')
 
@@ -179,66 +181,103 @@ def FlagsForFile( filename, **kwargs ):
   }
 '''
 
-def add_dir_files(fp, dirpath):
-    file_cnt = 0
-    for fpath in os.listdir(dirpath):
-        ext = os.path.splitext(fpath)
-        if len(ext) > 1 and ext[1][1:] in SUPPORTED_EXTENSIONS:
-            fp.write(os.path.join(dirpath, fpath)  + '\n')
-            file_cnt += 1
-    return file_cnt
+class NoSourceError(IOError):
+    pass
 
-def make_ycm_extra_conf(included_dirs):
-    local_included = ''
-    for dirpath in included_dirs:
-        local_included += "'-I',\n'{}',\n".format(dirpath)
+class ProjectProcessor(object):
+    def __init__(self, path):
+        assert op.isdir(path)
 
-    with open(YCM_EXTRA_CONF_FILE, 'w') as fp:
-        fp.write(YCM_CONF_TEMPLATE.replace('LOCAL_INCLUDE_FILE', local_included[:-1]))
+        self.path = op.abspath(path)
+        self.file_cnt = 0
+        self.nbcfg = op.join(self.path, 'nbproject', 'configurations.xml')
+        prj_src = op.join(self.path, 'src')
+        if not op.exists(prj_src):
+            prj_src = op.join(self.path, op.basename(self.path))
+            if not op.exists(prj_src):
+                raise NoSourceError('can not find source directories')
+        self.prj_src = prj_src
+        self.src_dirs = [ prj_src ]
+        self.inc_dirs = []
 
-def get_src_dirs(nbcfg):
-    incdirs = []
+    def add_dir_files(self, fp, dirpath):
+        for fpath in os.listdir(dirpath):
+            ext = op.splitext(fpath)
+            if len(ext) > 1 and ext[1][1:] in SUPPORTED_EXTENSIONS:
+                fp.write(op.join(dirpath, fpath)  + '\n')
+                self.file_cnt += 1
 
-    # The caller ensures the file exists
-    tree = ET.parse(nbcfg)
-    for conf in tree.findall('confs/conf'):
-        if conf.attrib['name'] == 'Debug':
-            for elem in conf.findall('compileType/ccTool/incDir/pElem'):
-                incdirs.append(os.path.abspath(elem.text))
-            break
-    return incdirs
+    def make_ycm_extra_conf(self):
+        local_included = ''
+        for dirpath in self.src_dirs:
+            local_included += "'-I',\n'{}',\n".format(
+                    op.relpath(dirpath, self.path))
 
-def make_tags(src_dirs):
-    files = datetime.datetime.now().strftime('srcfile_%Y%m%d')
+        with open(op.join(self.path, YCM_EXTRA_CONF_FILE), 'w') as fp:
+            fp.write(YCM_CONF_TEMPLATE.replace('LOCAL_INCLUDE_FILE', local_included[:-1]))
 
-    file_cnt = 0
-    with open(files, 'w') as fp:
-        for dirpath in src_dirs:
-            file_cnt += add_dir_files(fp, os.path.abspath(dirpath))
+    def get_inc_dirs(self):
+        # The caller ensures the file exists
+        tree = ET.parse(self.nbcfg)
+        for conf in tree.findall('confs/conf'):
+            if conf.attrib['name'] == 'Debug':
+                return [ op.join(self.path, elem.text) for elem in conf.findall(
+                                  'compileType/ccTool/incDir/pElem') ]
+        return []
 
-        fp.flush()
+    def get_preprocessors(self):
+        for conf in ET.parse(self.nbcfg).findall('confs/conf'):
+            if conf.attrib['name'] == 'Debug':
+                return [ elem.text for elem in conf.findall(
+                            'compileType/ccTool/preprocessorList/Elem') ]
+        return []
 
-        if file_cnt:
-            subprocess.call(['ctags', '-L', files])
-            subprocess.call(['cscope', '-bqu', '-i', files])
+    def make_tags(self):
+        files = op.join(self.prj_src, datetime.now().strftime('srcfile_%Y%m%d'))
+
+        with open(files, 'w') as fp:
+            for dirpath in self.src_dirs:
+                self.add_dir_files(fp, op.abspath(dirpath))
+
+            fp.flush()
+
+            if self.file_cnt:
+                old = os.getcwd()
+                os.chdir(self.prj_src)
+
+                subprocess.call(['ctags', '-L', files])
+                subprocess.call(['cscope', '-bqu', '-i', files])
+
+                os.chdir(old)
+
+    def run(self):
+        self.src_dirs.extend(self.get_inc_dirs())
+        self.make_tags()
+        self.make_ycm_extra_conf()
+
+def process_project(path):
+    print('Processing', path)
+    try:
+        ProjectProcessor(path).run()
+    except NoSourceError as ie:
+        print(ie)
 
 if __name__ == '__main__':
     cwd = os.getcwd()
     default_src = os.path.join(cwd, 'src')
-
-    if len(sys.argv) > 1:
-        base_dir = sys.argv[1]
-    elif os.path.exists(default_src):
-        base_dir = default_src
+    parser = argparse.ArgumentParser(description='create YCM conf file and' +
+                                     ' tags from netbeans project')
+    parser.add_argument('-v', '--verbosity', action='count', default=2,
+                        help='print verbose')
+    parser.add_argument('-r', '--recursive', action='store_true',
+                        help='process all the subdirectories')
+    parser.add_argument('dirs', type=str, nargs='+', default=[os.getcwd()],
+                         help='projects directories')
+    ns = parser.parse_args(args=sys.argv[1:])
+    if ns.recursive:
+        for d in ns.dirs:
+            for x in os.listdir(op.abspath(d)):
+                process_project(x)
     else:
-        print("No 'src' directory in cwd. Please specify it")
-        sys.exit(1)
-
-    nbcfg = os.path.join(cwd, os.path.join('nbproject',
-                                'configurations.xml'))
-
-    src_dirs = [ '.' ]
-    src_dirs.extend(os.path.relpath(x, base_dir) for x in get_src_dirs(nbcfg))
-    os.chdir(base_dir)
-    make_tags(src_dirs)
-    make_ycm_extra_conf(src_dirs)
+        for d in ns.dirs:
+            process_project(d)
