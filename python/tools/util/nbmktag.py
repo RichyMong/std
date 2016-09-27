@@ -3,6 +3,7 @@ import os
 import sys
 import subprocess
 import argparse
+import glob
 import os.path as op
 import xml.etree.ElementTree as ET
 from datetime import datetime
@@ -195,13 +196,13 @@ class ProjectProcessor(object):
         if not op.exists(prj_src):
             prj_src = op.join(self.path, op.basename(self.path))
             if not op.exists(prj_src):
-                raise NoSourceError('can not find source directories')
+                prj_src = self.path
         self.prj_src = prj_src
         self.src_dirs = [ prj_src ]
         self.inc_dirs = []
 
     def add_dir_files(self, fp, dirpath):
-        for fpath in os.listdir(dirpath):
+        for fpath in glob.iglob('{}/**/*'.format(dirpath), recursive=True):
             ext = op.splitext(fpath)
             if len(ext) > 1 and ext[1][1:] in SUPPORTED_EXTENSIONS:
                 fp.write(op.join(dirpath, fpath)  + '\n')
@@ -256,6 +257,9 @@ class ProjectProcessor(object):
         self.make_ycm_extra_conf()
 
 def process_project(path):
+    if not op.isdir(path):
+        return
+
     print('Processing', path)
     try:
         ProjectProcessor(path).run()

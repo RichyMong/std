@@ -64,6 +64,32 @@ std::ostream& operator<<(std::ostream& os, const GoodsInfo& gi)
     return os;
 }
 
+template <typename T>
+void put_elem(ptree& pt, const T& v)
+{
+    ptree tmp;
+    tmp.put("", to_string(v));
+    pt.push_back(std::make_pair("", tmp));
+}
+
+void put_elem(ptree& pt, const RtMin& x)
+{
+    put_elem(pt, x.wTime);
+    put_elem(pt, x.dwOpen);
+    put_elem(pt, x.dwHigh);
+    put_elem(pt, x.dwLow);
+    put_elem(pt, x.dwClose);
+    put_elem(pt, x.dwAve);
+    put_elem(pt, x.xvolume);
+    put_elem(pt, x.xamount);
+    put_elem(pt, x.xTradeNum);
+    put_elem(pt, x.xWaiPan);
+    put_elem(pt, x.xExt1);
+    put_elem(pt, x.xExt2);
+    put_elem(pt, x.dwExt1);
+    put_elem(pt, x.dwExt2);
+}
+
 # pragma pack(pop)
 
 template <typename _Type>
@@ -72,14 +98,6 @@ struct File {
     GoodsInfo goods[DF_MAX_GOODSNUM];
     std::map<std::string, std::vector<_Type>> data;
 };
-
-template <typename T>
-void put_elem(ptree& pt, const T& v)
-{
-    ptree tmp;
-    tmp.put("", to_string(v));
-    pt.push_back(std::make_pair("", tmp));
-}
 
 template <typename _Type>
 bool read(const std::string& filename, File<_Type>& file)
@@ -134,20 +152,7 @@ bool read(const std::string& filename, File<_Type>& file)
         ptree stock_array;
         for (const auto& x : it->second) {
             ptree tmp;
-            put_elem(tmp, x.wTime);
-            put_elem(tmp, x.dwOpen);
-            put_elem(tmp, x.dwHigh);
-            put_elem(tmp, x.dwLow);
-            put_elem(tmp, x.dwClose);
-            put_elem(tmp, x.dwAve);
-            put_elem(tmp, x.xvolume);
-            put_elem(tmp, x.xamount);
-            put_elem(tmp, x.xTradeNum);
-            put_elem(tmp, x.xWaiPan);
-            put_elem(tmp, x.xExt1);
-            put_elem(tmp, x.xExt2);
-            put_elem(tmp, x.dwExt1);
-            put_elem(tmp, x.dwExt2);
+            put_elem(tmp, x);
             stock_array.push_back(std::make_pair("", tmp));
         }
 

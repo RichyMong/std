@@ -63,7 +63,7 @@ def get_solution_title(sno):
         if sno is None or sno == int(stat['question_id']):
             title = stat['question__title_slug']
             url = 'https://leetcode.com/problems/{}'.format(title)
-            bsoup = bs4.BeautifulSoup(requests.get(url).text)
+            bsoup = bs4.BeautifulSoup(requests.get(url).text, 'html.parser')
             attr = bsoup.find('div', { 'ng-controller' : 'AceCtrl as aceCtrl' })
             default_code = find_default_code(attr['ng-init'], 'c++')
             content = bsoup.find_all('p')
