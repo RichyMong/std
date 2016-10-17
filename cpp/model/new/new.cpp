@@ -12,7 +12,7 @@ void* operator new(size_t size, const char* file, int line)
 {
     char* ptr = (char *) malloc(size + head_size);
 
-    std::cout << "allocate " << size << " bytes: " << (void*)ptr << std::endl;
+    std::cout << "allocate " << size << " bytes: " << (void*) (ptr + head_size) << std::endl;
 
     *(uint64_t*) ptr = magic;
 
@@ -23,19 +23,31 @@ void* operator new(size_t size, const char* file, int line)
 
 void operator delete(void* ptr) noexcept
 {
-    std::cout << "try to free " << ptr << std::endl;
-
     if (!ptr) {
         return;
     }
 
     char* cptr = (char *) ptr - head_size;
     if (*(decltype(magic)*) (cptr) != magic) {
+        std::cout << "system free: " << ptr << std::endl;
+
         free(ptr);
     } else {
+        std::cout << "my free: " << ptr << std::endl;
+
         free(cptr);
     }
 
+}
+
+void* operator new[](size_t size, const char* file, int line)
+{
+    return operator new(size, file, line);
+}
+
+void operator delete[](void* ptr) noexcept
+{
+    operator delete(ptr);
 }
 
 #endif
