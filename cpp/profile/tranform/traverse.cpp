@@ -6,6 +6,7 @@
 #include <thread>
 #include <boost/iterator/transform_iterator.hpp>
 #include "../../utils/iterator.h"
+#include "../include/comfun.h"
 
 using namespace std;
 using namespace std::chrono;
@@ -13,9 +14,11 @@ using namespace boost;
 using namespace util;
 
 template <typename Iterator>
-static void do_work(Iterator first, Iterator last, size_t n = 0)
+static void do_work(Iterator first, Iterator last, int x)
 {
-    fstream fs("test.txt", fstream::out);
+    char buf[32];
+    snprintf(buf, sizeof(buf), "test_%d.txt", x);
+    fstream fs(buf, fstream::out);
     while (first != last) {
         fs << *first++;
     }
@@ -30,7 +33,7 @@ static void key_intersect(const map<K, V>& one)
         vec.push_back(it->first);
     }
 
-    do_work(vec.begin(), vec.end(), vec.size());
+    do_work(vec.begin(), vec.end(), 1);
 }
 
 template <typename K, typename V>
@@ -41,7 +44,7 @@ static void key_intersect_transform(const map<K, V>& one)
 
     auto one_beg = iterators::make_transform_iterator(one.begin(), key_func);
     auto one_end = iterators::make_transform_iterator(one.end(), key_func);
-    do_work(one_beg, one_end, one.size());
+    do_work(one_beg, one_end, 2);
 }
 
 template <typename K, typename V>
@@ -49,36 +52,9 @@ static void key_intersect_self(const map<K, V>& one)
 {
     using value_type = typename map<K, V>::value_type;
 
-    do_work(key_iterator(one.begin()), key_iterator(one.end()), one.size());
+    do_work(key_iterator(one.begin()), key_iterator(one.end()), 3);
 }
 
-class PrintPeriod
-{
-public:
-    PrintPeriod()
-    {
-        first_tp_ = steady_clock::now();
-    }
-
-    ~PrintPeriod()
-    {
-        auto d = duration_cast<nanoseconds>(steady_clock::now() - first_tp_);
-        fprintf(stdout, "used %ld nanoseconds\n", d.count());
-    }
-
-private:
-    steady_clock::time_point first_tp_;
-};
-
-
-template <typename T>
-ostream& operator<<(ostream& os, const vector<T>& vec)
-{
-    for (auto &v : vec) {
-        os << v << ' ';
-    }
-    return os << '\n';
-}
 
 int main(int argc, char* argv[])
 {
@@ -94,17 +70,17 @@ int main(int argc, char* argv[])
     }
 
     {
-        PrintPeriod period;
-        key_intersect(one);
-    }
-
-    {
-        PrintPeriod period;
+        PrintPeriod period("transform");
         key_intersect_transform(one);
     }
 
     {
-        PrintPeriod period;
+        PrintPeriod period("convert2vector");
+        key_intersect(one);
+    }
+
+    {
+        PrintPeriod period("self");
         key_intersect_self(one);
     }
 
