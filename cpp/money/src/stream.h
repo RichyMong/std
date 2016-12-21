@@ -3,12 +3,40 @@
 #include <cstddef>
 #include <vector>
 #include <string>
+#include <fstream>
+#include <exception>
 #include <type_traits>
 #include <string.h>
 #include <assert.h>
 #include "types.h"
 
 namespace util {
+
+template <typename T>
+struct HasUpdate
+{
+    template<typename U, size_t (U::*)() const> struct SFINAE {};
+    template<typename U> static char Test(SFINAE<U, &U::update>*);
+    template<typename U> static int Test(...);
+    static const bool value = sizeof(Test<T>(0)) == sizeof(char);
+};
+
+class OverReadException : public std::exception
+{
+public:
+    OverReadException(int len, int offset, int readable)
+    {
+        snprintf(buffer_, sizeof(buffer_), "try to read %d bytes at %d:%d", len, offset, readable);
+    }
+
+    virtual const char* what() const throw()
+    {
+        return buffer_;
+    }
+
+public:
+    char buffer_[128];
+};
 
 template <size_t _BufSize>
 class OutputBufferStream {
@@ -74,9 +102,9 @@ public:
     mutable size_t offset_;
 };
 
-class InputBufferStream {
+class InputBuffer {
 public:
-    InputBufferStream(const byte* buffer, size_t size)
+    InputBuffer(const byte* buffer, size_t size)
         : buffer_(buffer), size_(size)
     {
     }
@@ -84,6 +112,81 @@ public:
     size_t readable() const {
         return size_ - offset_;
     }
+
+    size_t offset() const {
+        return offset_;
+    }
+
+    void read(byte* buffer, size_t len)
+    {
+        if (len > readable()) {
+            throw OverReadException(len, offset_, size_);
+        }
+
+        ::memcpy(buffer, buffer_ + offset_, len);
+    }
+
+    void skip(int n) { offset_ += n; }
+
+private:
+    const byte* buffer_;
+    const size_t size_;
+    mutable size_t offset_;
+};
+
+class InputFile
+{
+public:
+    explicit InputFile(const std::string& path)
+        : fs_ { path, std::ios::binary | std::ios::in }
+    {
+        auto pos = fs_.tellg();
+        fs_.seekg(0, std::ios_base::end);
+        size_ = fs_.tellg() - pos;
+        fs_.seekg(pos, std::ios_base::beg);
+    }
+
+    size_t offset() const {
+        return const_cast<std::fstream&>(fs_).tellg();
+    }
+
+    size_t readable() const {
+        return size_ - offset();
+    }
+
+    void read(byte* buffer, size_t len) const
+    {
+        if (len > readable()) {
+            throw OverReadException(len, offset(), size_);
+        }
+
+        const_cast<std::fstream&>(fs_).read((char*) buffer, len);
+    }
+
+    void skip(int n) { fs_.seekg(n, std::ios_base::cur); }
+
+private:
+    std::fstream fs_;
+    size_t size_;
+};
+
+template <typename InputType>
+class InputStream
+{
+public:
+    template <typename... Args>
+    InputStream(Args... args)
+        : input_ { std::forward<Args...>(args...) }
+    {
+    }
+
+    size_t readable() const {
+        return input_.readable();
+    }
+
+    size_t offset() const { return input_.offset(); }
+
+    bool eof() const { return !readable(); }
 
 #define READ_FUNCTION(type)                 \
     type read_##type() const {              \
@@ -103,6 +206,15 @@ public:
     READ_FUNCTION(uint);
     READ_FUNCTION(ulong);
 
+    template <typename _Type,
+        typename=typename std::enable_if<std::is_pod<_Type>::value>::type>
+    _Type read() const
+    {
+        _Type x;
+        read(x);
+        return x;
+    }
+
     template <typename _SizeType>
     std::string readString() const {
         std::string x;
@@ -110,17 +222,27 @@ public:
         return x;
     }
 
-    template <typename _Type,
-        typename=typename std::enable_if<std::is_pod<_Type>::value>::type>
-    bool read(_Type& x) const
+    template <typename DataType,
+        typename=typename std::enable_if<std::is_pod<DataType>::value && !HasUpdate<DataType>::value>::type>
+    bool read(DataType& x) const
     {
-        if (readable() < sizeof(_Type)) {
+        if (readable() < sizeof(DataType)) {
             return false;
         }
 
-        ::memcpy(&x, buffer_ + offset_, sizeof(_Type));
+        byte buffer[sizeof(DataType)];
+        input_.read(buffer, sizeof(buffer));
+        ::memcpy(&x, buffer, sizeof(DataType));
 
-        offset_ += sizeof(_Type);
+        return true;
+    }
+
+    template <typename DataType,
+        typename=typename std::enable_if<HasUpdate<DataType>::value>::type>
+    bool read(DataType& x) const
+    {
+        x.update(*this);
+
         return true;
     }
 
@@ -133,8 +255,7 @@ public:
             return false;
         }
 
-        ::memcpy(x, buffer_ + offset_, needed);
-        offset_ += needed;
+        input_.read((char*) &x, needed);
 
         return true;
     }
@@ -156,17 +277,18 @@ public:
         }
 
         container.reserve(size);
-        auto start = (_ElementType *) (buffer_ + offset_);
-        std::copy(start, start + size, std::back_inserter(container));
-        offset_ += sizeof(_ElementType) * size;
+        for (_SizeType i = 0; i < size; i++) {
+            container.push_back(read<_ElementType>());
+        }
 
         return true;
     }
 
 private:
-    const byte* buffer_;
-    const size_t size_;
-    mutable size_t offset_;
+    InputType input_;
 };
 
-}
+using InputBufferStream = InputStream<InputBuffer>;
+using InputFileStream = InputStream<InputFile>;
+
+} // namespace util

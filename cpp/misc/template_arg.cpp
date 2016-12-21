@@ -4,6 +4,8 @@
 #include <list>
 #include <string>
 
+template <class T> struct UseIt {};
+
 class X {
 public:
     X(const std::string& name)
@@ -16,6 +18,9 @@ public:
 private:
     std::string name_;
 };
+
+template <>
+struct UseIt<X> { static const int v = 10; };
 
 template <typename _ElementType, template <typename...> class _PtrType,
           template <typename...> class _ContainerType>
@@ -42,4 +47,5 @@ int main()
     get(vec, "two");
     get(ls, "one");
     get(ls, "two");
+    std::cout << UseIt<X>::v << std::endl;
 }

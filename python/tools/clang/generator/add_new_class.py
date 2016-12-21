@@ -1,14 +1,12 @@
 #!/usr/bin/env python
-import os
 import sys
-import stdqt
 import cachedata
 
 def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="add new interfaces automatically")
-    parser.add_argument('-c', '--classname', action='store', help='class name')
+    parser.add_argument('-c', '--classname', action='store', help='class name in "StdQtStruct.h"')
     ns = parser.parse_args(args=sys.argv[1:])
 
     if not ns.classname:

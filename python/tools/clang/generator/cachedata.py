@@ -207,7 +207,7 @@ class MultiCache(object):
                         print(c.kind, c.spelling)
 
     def field_decl(self, cache_class_name):
-        return cache_class_name + ' ' + MultiCache.field_name(cache_class_name)  + ';'
+        return cache_class_name + ' ' + self.field_name(cache_class_name)  + ';'
 
     def field_name(self, cache_class_name):
         name = cache_class_name[len(self.config.CACHE_CLASS_PREFIX):]

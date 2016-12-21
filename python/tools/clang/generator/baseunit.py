@@ -53,15 +53,21 @@ class BaseUnit(object):
         arg_types = [x[0] for x in arg_type_names]
 
         arg_type_func = lambda c : [x.type.spelling for x in c.get_arguments()]
+        all_args_str = ', '.join(x[0] + ' ' + x[1] for x in arg_type_names)
 
         func_decl = ''
         if func_type in (util.VIRTUAL, util.PURE_VIRTUAL):
             func_decl = 'virtual '
-        func_decl += '{} {}({})'.format(result_type, method_name,
-                        ', '.join(x[0] + ' ' + x[1] for x in arg_type_names))
+        func_decl += '{} {}('.format(result_type, method_name)
+
+        tail = ');'
         if func_type == util.PURE_VIRTUAL:
-            func_decl += ' = 0'
-        func_decl += ';'
+            tail = ')= 0;'
+
+        if len(func_decl) + len(all_args_str) + len(tail) > 80:
+            all_args_str = all_args_str.replace(', ', ',\n{}'.format(
+                (len(util.INDENT) + len(func_decl)) * ' '))
+        func_decl += all_args_str + tail
 
         print('Add declaration of "{}::{}" to file "{}"...'.format(class_name,
             method_name, self.relpath), end = '')
@@ -73,7 +79,7 @@ class BaseUnit(object):
         if exists:
             print('already there at line {}'.format(target.location.line))
         else:
-            util.insert_after_line(self.filepath, target.extent.end.line,
+            util.insert_after_line(self.filepath, target.extent.end.line + 1,
                     util.INDENT + func_decl)
             print('done')
 

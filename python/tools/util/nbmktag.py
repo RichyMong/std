@@ -221,7 +221,7 @@ class ProjectProcessor(object):
         # The caller ensures the file exists
         tree = ET.parse(self.nbcfg)
         for conf in tree.findall('confs/conf'):
-            if conf.attrib['name'] == 'Debug':
+            if conf.attrib['name'].startswith('Debug'):
                 return [ op.join(self.path, elem.text) for elem in conf.findall(
                                   'compileType/ccTool/incDir/pElem') ]
         return []

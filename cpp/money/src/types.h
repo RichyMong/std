@@ -14,6 +14,73 @@ constexpr size_t kSmallBuf = 1 << 12;
 constexpr size_t kMedianBuf = 1 << 16;
 constexpr size_t kHugeBuf = 1 << 20;
 
+class LargeInt {
+public:
+    explicit LargeInt(int v = 0)
+        : value_ { v }
+    {
+    }
+
+    template <typename StreamType>
+    void update(StreamType& is)
+    {
+        auto v = is.template read<int>();
+        bool negative = false;
+        if (v < 0) {
+            negative = true;
+            v = -v;
+        }
+        auto times = v >> 29;
+        if (times) {
+            v &= LargeInt::kFactor;
+            v <<= times * 4;
+        }
+
+        value_ = negative ? -v : v;
+    }
+
+    template <typename StreamType>
+    static LargeInt from_stream(StreamType& is)
+    {
+        LargeInt ret;
+        ret.update(is);
+        return ret;
+    }
+
+    operator int() const { return value_; }
+
+private:
+    static constexpr int kFactor = 0x1fffffff;
+
+    int value_;
+};
+
+template <size_t NR_DIGITS>
+class Digit {
+public:
+    Digit() = default;
+
+    template <typename StreamType>
+    void update(StreamType& is)
+    {
+        auto v = is.template read<int>();
+        value_ = v / NR_DIGITS;
+    }
+
+    operator float() const { return value_; }
+
+    template <typename StreamType>
+    static Digit<NR_DIGITS> from_stream(StreamType& is)
+    {
+        Digit<NR_DIGITS> d;
+        d.update(is);
+        return d;
+    }
+
+private:
+    float value_;
+};
+
 class BigInt {
     friend std::ostream& operator<<(std::ostream& os, const BigInt& bi);
 public:

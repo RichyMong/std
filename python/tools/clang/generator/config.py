@@ -8,7 +8,7 @@ NotifySetting = namedtuple('NotifySetting', ['sequence', 'stockid', 'market'])
 # 'push' : whether this message could be pushed
 MDS = namedtuple('MDS', [ 'req', 'push' ])
 
-root = '/home/meng/work/test/multimarket/trunk/src/'
+root = '/home/meng/windows/code/cas-vcm/multimarket/trunk/src/'
 
 FROM_CLASS = 'CStdQtEx'
 
