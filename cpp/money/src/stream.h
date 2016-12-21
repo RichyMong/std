@@ -12,13 +12,30 @@
 
 namespace util {
 
+template <typename T> class InputStream;
+
+struct SubsFailure {};
+
 template <typename T>
-struct HasUpdate
+struct SubsResult : public std::true_type {};
+
+template <>
+struct SubsResult<SubsFailure> : public std::false_type {};
+
+template <typename T, typename X>
+class GetUpdateResult
 {
-    template<typename U, size_t (U::*)() const> struct SFINAE {};
-    template<typename U> static char Test(SFINAE<U, &U::update>*);
-    template<typename U> static int Test(...);
-    static const bool value = sizeof(Test<T>(0)) == sizeof(char);
+    template <typename U, void (U::*)(const InputStream<X>&)> struct SFINAE {  };
+    template <typename U> static void check(SFINAE<U, &U::template update<InputStream<X>>>*);
+    template <typename U> static SubsFailure check(...);
+
+public:
+    using type = decltype(check<T>(0));
+};
+
+template <typename T, typename X>
+struct HasUpdate : public SubsResult<typename GetUpdateResult<T, X>::type>
+{
 };
 
 class OverReadException : public std::exception
@@ -117,7 +134,7 @@ public:
         return offset_;
     }
 
-    void read(byte* buffer, size_t len)
+    void read(byte* buffer, size_t len) const
     {
         if (len > readable()) {
             throw OverReadException(len, offset_, size_);
@@ -223,41 +240,40 @@ public:
     }
 
     template <typename DataType,
-        typename=typename std::enable_if<std::is_pod<DataType>::value && !HasUpdate<DataType>::value>::type>
-    bool read(DataType& x) const
+        typename NotUsed = typename std::enable_if<!HasUpdate<DataType, InputType>::value, int>::type,
+        typename=typename std::enable_if<std::is_pod<DataType>::value>::type>
+    void read(DataType& x, NotUsed = NotUsed()) const
     {
         if (readable() < sizeof(DataType)) {
-            return false;
+            throw_overread(sizeof(DataType));
         }
 
         byte buffer[sizeof(DataType)];
         input_.read(buffer, sizeof(buffer));
         ::memcpy(&x, buffer, sizeof(DataType));
-
-        return true;
     }
 
     template <typename DataType,
-        typename=typename std::enable_if<HasUpdate<DataType>::value>::type>
-    bool read(DataType& x) const
+        typename NotUsed = typename std::enable_if<HasUpdate<DataType, InputType>::value, int>::type>
+    void read(DataType& x, NotUsed = NotUsed()) const
     {
-        x.update(*this);
+        if (readable() < sizeof(DataType)) {
+            throw_overread(sizeof(DataType));
+        }
 
-        return true;
+        x.update(*this);
     }
 
     template <typename _ElementType, size_t _Size,
               typename std::enable_if<std::is_pod<_ElementType>::value>::type>
-    bool read(_ElementType (&x)[_Size])
+    void read(_ElementType (&x)[_Size])
     {
         auto needed = _Size * sizeof(_ElementType);
         if (needed > readable()) {
-            return false;
+            throw_overread(needed);
         }
 
         input_.read((char*) &x, needed);
-
-        return true;
     }
 
     // Read into a std::string or std::vector<T>
@@ -265,26 +281,25 @@ public:
              template <typename...> class Container,
           typename=typename std::enable_if<std::is_pod<_ElementType>::value>::type,
         typename=typename std::enable_if<std::is_integral<_SizeType>::value>::type>
-    bool read(Container<_ElementType>& container) const
+    void read(Container<_ElementType>& container) const
     {
-        _SizeType size;
-        if (!read(size)) {
-            return false;
-        }
-
+        _SizeType size = read<_SizeType>();
         if (sizeof(_ElementType) * size > readable()) {
-            return false;
+            throw_overread(sizeof(_ElementType) * size);
         }
 
         container.reserve(size);
         for (_SizeType i = 0; i < size; i++) {
             container.push_back(read<_ElementType>());
         }
-
-        return true;
     }
 
 private:
+    void throw_overread(int size) const
+    {
+         throw OverReadException(size, offset(), readable());
+    }
+
     InputType input_;
 };
 

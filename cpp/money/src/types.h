@@ -22,7 +22,7 @@ public:
     }
 
     template <typename StreamType>
-    void update(StreamType& is)
+    void update(const StreamType& is)
     {
         auto v = is.template read<int>();
         bool negative = false;
@@ -40,7 +40,7 @@ public:
     }
 
     template <typename StreamType>
-    static LargeInt from_stream(StreamType& is)
+    static LargeInt from_stream(const StreamType& is)
     {
         LargeInt ret;
         ret.update(is);
@@ -61,7 +61,7 @@ public:
     Digit() = default;
 
     template <typename StreamType>
-    void update(StreamType& is)
+    void update(const StreamType& is)
     {
         auto v = is.template read<int>();
         value_ = v / NR_DIGITS;
@@ -70,7 +70,7 @@ public:
     operator float() const { return value_; }
 
     template <typename StreamType>
-    static Digit<NR_DIGITS> from_stream(StreamType& is)
+    static Digit<NR_DIGITS> from_stream(const StreamType& is)
     {
         Digit<NR_DIGITS> d;
         d.update(is);
