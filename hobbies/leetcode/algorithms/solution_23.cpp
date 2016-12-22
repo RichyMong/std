@@ -15,27 +15,68 @@ using namespace std;
  */
 class Solution {
 public:
-    ListNode* mergeKLists(vector<ListNode*>& lists) {
-        ListNode* head = nullptr;
-        for (size_t i = 0; i < lists.size(); i++) {
-            for (auto node = lists[i]; node; node = node->next) {
-                auto prev = &head;
-                for (auto tmp = head; tmp; tmp = tmp->next) {
-                    if (node->val < tmp->val) {
-                        break;
-                    }
-                    prev = &tmp->next;
-                }
-                node->next = *prev;
-                *prev = node;
+    ListNode* mergeTwoLists(ListNode* l1, ListNode* l2) {
+        ListNode dummy { 0 };
+        ListNode* tail = &dummy;
+
+        while (l1 && l2) {
+            if (l1->val < l2->val) {
+                tail->next = l1;
+                l1 = l1->next;
+            } else {
+                tail->next = l2;
+                l2 = l2->next;
             }
+            tail = tail->next;
         }
 
-        return head;
+        tail->next = l1 ? l1 : l2;
+
+        return dummy.next;
+    }
+
+    ListNode* mergeKLists(ListNode** beg, int size)
+    {
+        if (size < 2) {
+            return *beg;
+        } else if (size == 2) {
+            return mergeTwoLists(beg[0], beg[1]);
+        } else {
+            auto median = size / 2;
+            auto first = mergeKLists(beg, median);
+            auto second = mergeKLists(beg + median, size - median);
+            return mergeTwoLists(first, second);
+        }
+    }
+
+    ListNode* mergeKLists(vector<ListNode*>& lists) {
+        if (lists.empty()) return nullptr;
+
+        return mergeKLists(&*lists.begin(), lists.size());
     }
 };
 
 int main()
 {
-    Solution::
+    Solution s;
+    {
+
+        auto l1 = create_list({1, 2});
+        auto l2 = create_list({3, 4, 5});
+        auto l3 = create_list({1, 2, 3});
+        vector<ListNode*> lists_3 { l1, l2, l3 };
+        auto r3 = s.mergeKLists(lists_3);
+        print_list(r3);
+    }
+
+    {
+        auto l1 = create_list({1, 2});
+        auto l2 = create_list({3, 4, 5});
+        auto l3 = create_list({1, 2, 3});
+        auto l4 = create_list({2, 3, 4});
+        vector<ListNode*> lists_4 { l1, l2, l3, l4};
+        auto r4 = s.mergeKLists(lists_4);
+        print_list(r4);
+    }
 }
+
