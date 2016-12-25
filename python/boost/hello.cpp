@@ -64,7 +64,7 @@ BOOST_PYTHON_MODULE(hello)
 {
     using namespace boost::python;
     class_<Overload>("Overload", init<const Dim&>())
-        .def_readwrite("numbers_", &Overload::numbers_)
+        .def_readonly("numbers_", &Overload::numbers_)
         .def("f", (void(*)(int))Overload::f)
         .def("f", (void(*)(const std::string&))Overload::f)
         .staticmethod("f")

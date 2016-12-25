@@ -1,9 +1,15 @@
 import collections
 
 def compare(lhs, rhs, prefix = ''):
+    '''
+    Simple compare. Cross reference is not taken into consideration.
+    '''
     assert type(lhs) is type(rhs)
     name_func = lambda x : '.'.join((prefix, x)) if prefix else x
-    if isinstance(lhs, collections.Iterable) and not isinstance(lhs, str):
+    if isinstance(lhs, (bool, int, float, str)):
+        if lhs != rhs:
+            return (prefix, lhs, rhs)
+    elif isinstance(lhs, collections.Iterable):
         if len(lhs) != len(rhs):
             return (name_func('__len__()'), len(lhs), len(rhs))
 
@@ -11,12 +17,13 @@ def compare(lhs, rhs, prefix = ''):
             r = compare(x, y, '{}[{}]'.format(prefix, i))
             if r is not None:
                 return r
-    elif isinstance(lhs, (bool, int, float, str)):
-        if lhs != rhs:
-            return (prefix, lhs, rhs)
     else:
-        lattr = set(x for x in lhs.__dir__() if not (x.startswith('__') or callable(getattr(lhs, x))))
-        hattr = set(x for x in rhs.__dir__() if not (x.startswith('__') or callable(getattr(rhs, x))))
+        if hasattr(lhs, '__dict__') and lhs.__dict__:
+            lattr = set(x for x in lhs.__dict__ if not (x.startswith('__') or callable(getattr(lhs, x))))
+            hattr = set(x for x in rhs.__dict__ if not (x.startswith('__') or callable(getattr(rhs, x))))
+        else:
+            lattr = set(x for x in dir(lhs) if not (x.startswith('__') or callable(getattr(lhs, x))))
+            hattr = set(x for x in dir(rhs) if not (x.startswith('__') or callable(getattr(rhs, x))))
         for x in lattr.intersection(hattr):
             lv = getattr(lhs, x)
             rv = getattr(rhs, x)
