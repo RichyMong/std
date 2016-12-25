@@ -32,6 +32,7 @@
 34  Search for a Range
 35  Search Insert Position
 38  Count and Say
+41  first-missing-positive
 46  Permutations
 50  powx-n
 58  Length of Last Word
@@ -104,3 +105,5 @@
 349 Intersection of Two Arrays
 350 Intersection of Two Arrays II
 371 Sum of Two Integers
+389 find-the-difference
+414 third-maximum-number
