@@ -37,8 +37,10 @@
 50  powx-n
 58  Length of Last Word
 61  rotate-list
+62  unique-paths
 66  Plus One
 67  Add Binary
+70  climbing-stairs
 80  Remove Duplicates from Sorted Array II
 82  Remove Duplicates from Sorted List II
 83  Remove Duplicates from Sorted List
@@ -60,6 +62,7 @@
 148 Sort List
 151 Reverse Words in a String
 152 Maximum Product Subarray
+153 find-minimum-in-rotated-sorted-array
 155 Min Stack
 160 Intersection of Two Linked Lists
 162 Find Peak Element
