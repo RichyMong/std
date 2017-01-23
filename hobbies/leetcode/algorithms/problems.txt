@@ -44,6 +44,7 @@
 80  Remove Duplicates from Sorted Array II
 82  Remove Duplicates from Sorted List II
 83  Remove Duplicates from Sorted List
+86  partition-list
 88  Merge Sorted Array
 92  reverse-linked-list-ii
 110 Balanced Binary Tree
@@ -76,6 +77,7 @@
 190 Reverse Bits
 191 Number of 1 Bits
 198 House Robber
+200 number-of-islands
 202 Happy Number
 203 Remove Linked List Elements
 204 Count Primes

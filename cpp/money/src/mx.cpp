@@ -192,7 +192,7 @@ void select_from_rtmin_and_quote(const RtMinData& rm, const QuoteData& qt)
 
     auto total = rm.data.size();
     if (qt.turn_over_ratio < 200) { // turn over ratio < 1%
-        printf("%d\n", qt.turn_over_ratio);
+        printf("turn_over_ratio too small: %d\n", qt.turn_over_ratio);
         return;
     }
 
@@ -241,9 +241,9 @@ int main(int argc, char* argv[])
     auto quote = read<QuoteData>(argv[2]);
     for (auto it = rtmin.data_.begin(); it != rtmin.data_.end(); ++it) {
         // auto qit = quote.data_.find(it->first);
-        auto qit = quote.data_.find("000025");
+        auto qit = quote.data_.find("600119");
         if (qit != quote.data_.end()) {
-            select_from_rtmin_and_quote(it->second, qit->second);
+            select_from_rtmin_and_quote(rtmin.data_["600119"], qit->second);
         }
         return 0;
     }

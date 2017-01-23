@@ -37,7 +37,7 @@ def process_file(filename):
     from clang.cindex import Index
 
     index = Index.create()
-    tu = index.parse(None, filename + [ '-std=c++11', '-x', 'c++' ])
+    tu = index.parse(filename[0], args = [ '-x', 'c++', '-std=c++11' ])
     if not tu:
         print("unable to load input")
 
@@ -46,9 +46,7 @@ def process_file(filename):
             add_class_method(c, '    void setData(const char*);')
 
 def main():
-    from pprint import pprint
-
-    from optparse import OptionParser, OptionGroup
+    from optparse import OptionParser
 
     global opts
 
