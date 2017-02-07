@@ -3,4 +3,5 @@
 !*.cpp
 !*.h
 !Makefile
-!**/*
+!**/*.cpp
+!**/Makefile

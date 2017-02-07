@@ -1,5 +1,2 @@
-*.class
-*.pyc
-*.o
-build
-dist
+learning.ctb~*
+**/_build
