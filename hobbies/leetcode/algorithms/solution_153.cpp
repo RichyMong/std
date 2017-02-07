@@ -16,11 +16,13 @@ public:
         while (size > 1) {
             auto mid = (size >> 1);
             auto half = first + mid;
-            if (*first < *half && *half < *(first + size - 1)) {
-                break;
-            } else if (*first < *half) {
-                first = half + 1;
-                size -= mid + 1;
+            if (*first < *half) {
+                if (mid == size - 1 || *half < *(first + size - 1))
+                    break;
+                else {
+                    first = half + 1;
+                    size -= mid + 1;
+                }
             } else {
                 ++first;
                 size = mid;
@@ -31,12 +33,20 @@ public:
     }
 };
 
-int main()
+int main(int argc, char* argv[])
 {
     Solution s;
-    cout << s.findMin(vector<int> { 4, 5, 6, 7, 1, 2, 3 }) << endl;
-    cout << s.findMin(vector<int> { 7, 1, 2, 3, 4, 5, 6 }) << endl;
-    cout << s.findMin(vector<int> { 2, 3, 4, 5, 6, 7, 1 }) << endl;
-    cout << s.findMin(vector<int> { 1, 2, 3, 4, 5, 6, 7 }) << endl;
-    cout << s.findMin(vector<int> { 8, 9, 10, 1, 2, 3, 4, 5, 6, 7 }) << endl;
+    vector<int> v;
+    for (int i = 1; i < (argc > 1 ? stoi(argv[1]): 10); i++) {
+        v.push_back(i * 2 + 1);
+    }
+    for (size_t i = 0; i < v.size(); i++) {
+        std::next_permutation(v.begin(), v.end());
+        cout << s.findMin(v) << endl;
+    }
+    cout << s.findMin(vector<int>{1}) << endl;
+    cout << s.findMin(vector<int>{3, 5}) << endl;
+    cout << s.findMin(vector<int>{5, 3}) << endl;
+    cout << s.findMin(vector<int>{5, 2, 3}) << endl;
+    return 0;
 }

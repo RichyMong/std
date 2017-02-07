@@ -1,2 +1,7 @@
 learning.ctb~*
 **/_build
+**/*.o
+**/*.a
+**/*.so
+**/*.pyc
+**/__pycache__
