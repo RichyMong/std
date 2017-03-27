@@ -1,32 +1,35 @@
 # pragma once
 
 #include <vector>
+#include <memory>
+#include <functional>
+#include <chrono>
 #include "fileobj.h"
-#include "timer.h"
 
 namespace net {
 
-class TimerQueue : public FileObj {
+using timerid_t = int;
+using TimerCallBack = std::function<void(timerid_t)>;
+using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
+
+static constexpr timerid_t INVALID_TIMER = 0;
+
+class TimerQueue {
 public:
     TimerQueue();
 
-    bool add_timer(Timer* timer);
-    void del_timer(Timer* timer);
+    timerid_t add_timer(TimePoint when, TimerCallBack callback);
 
-    virtual int get_fd() const override { return timerfd_; }
-    virtual void handle_readable(const BaseEventLoop& loop) override;
-    virtual void handle_writable(const BaseEventLoop& loop) override;
-    virtual void handle_closed(const BaseEventLoop& loop) override;
+    template <typename T, class Period = std::ratio<1> >
+    timerid_t add_timer(std::chrono::duration<T, Period> period,
+                       TimerCallBack callback,
+                       bool once = false);
+
+    void del_timer(timerid_t id);
 
 private:
-    struct TimerComparator {
-        bool operator()(const Timer& lhs, const Timer& rhs) const {
-            return lhs.when() < rhs.when();
-        }
-    };
-
-    int timerfd_;
-    std::vector<Timer*> timers_;
+    class TimerQueueImpl;
+    std::unique_ptr<TimerQueueImpl> tq_impl_;
 };
 
 }

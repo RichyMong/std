@@ -7,9 +7,6 @@ namespace net {
 
 class Timer {
 public:
-    using TimerCallBack = std::function<void(Timer*)>;
-    using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
-
     Timer(TimePoint when, TimerCallBack cb);
 
     template <typename T, class Period = std::ratio<1> >
@@ -19,6 +16,8 @@ public:
 
     TimePoint when() const { return when_; }
     bool once() const { return once_; }
+    int id() const { return id_; }
+    void id(int new_id) { id_ = new_id; }
 
     void timeout();
 
@@ -26,6 +25,7 @@ private:
     std::chrono::steady_clock::duration period_;
     TimePoint when_;
     TimerCallBack cb_;
+    timerid_t id_;
     bool once_;
 };
 
