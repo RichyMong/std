@@ -5,5 +5,6 @@
 !Makefile
 !**/*.cpp
 !**/Makefile
-!**/**
-**/*.o
+!**/*.h
+!**/.ycm_extra_conf.py
+!**/CMakeLists.txt
