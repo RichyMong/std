@@ -252,9 +252,12 @@ class ProjectProcessor(object):
                 os.chdir(old)
 
     def run(self):
-        self.src_dirs.extend(self.get_inc_dirs())
-        self.make_tags()
-        self.make_ycm_extra_conf()
+        try:
+            self.src_dirs.extend(self.get_inc_dirs())
+            self.make_tags()
+            self.make_ycm_extra_conf()
+        except:
+            print('{} failed'.format(self.path))
 
 def process_project(path):
     if not op.isdir(path):
