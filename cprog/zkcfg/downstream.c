@@ -3,12 +3,18 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <signal.h>
+#include "definitions.h"
 
 #define _LL_CAST_ (long long)
 
 static zhandle_t *zh;
 static clientid_t myid;
 static const char *clientIdFile = 0;
+
+static
+void my_data_completion(int rc, const char *value, int value_len,
+        const struct Stat *stat, const void *data);
 
 static const char* state2String(int state)
 {
@@ -20,8 +26,6 @@ static const char* state2String(int state)
         return "ASSOCIATING_STATE";
     if (state == ZOO_CONNECTED_STATE)
         return "CONNECTED_STATE";
-    if (state == ZOO_READONLY_STATE)
-        return "READONLY_STATE";
     if (state == ZOO_EXPIRED_SESSION_STATE)
         return "EXPIRED_SESSION_STATE";
     if (state == ZOO_AUTH_FAILED_STATE)
@@ -78,9 +82,54 @@ void watcher(zhandle_t *zzh, int type, int state, const char *path,
             zh=0;
         }
     } else if (type == ZOO_CREATED_EVENT) {
-        fprintf(stdout, "Path %s created\n", path);
+        zoo_aget(zh, path, 0, my_data_completion, strdup(path));
     } else if (type == ZOO_CHANGED_EVENT) {
+        zoo_aget(zh, path, 0, my_data_completion, strdup(path));
+    }
+}
 
+static
+void my_data_completion(int rc, const char *value, int value_len,
+        const struct Stat *stat, const void *data)
+{
+    const char* path = (const char*) data;
+    if (rc != ZOK) {
+        fprintf(stderr, "Failed to get data of %s: %d\n", path, rc);
+    } else {
+        fprintf(stdout, "path=%s, version=%d, data=%s\n", path, stat->version, value);
+    }
+
+    free((void*) data);
+}
+
+static
+void my_stat_completion(int rc, const struct Stat *stat,
+        const void *data)
+{
+    const char* path = (const char*) data;
+    if (rc != ZOK) {
+        fprintf(stderr, "Failed to get data of %s: %d\n", path, rc);
+    } else {
+        fprintf(stdout, "path=%s, version=%d\n", path, stat->version);
+    }
+
+    free((void*) data);
+}
+
+static void
+get_all_config(const char* location)
+{
+    if (zoo_aexists(zh, "/mds/zp/marketinfo.xml", 1, my_stat_completion, strdup("/mds/zp/marketinfo.xml"))) {
+        fprintf(stderr, "Failed to check exist: %s\n", UNIVERSAL_ID_PATH);
+    }
+
+    if (zoo_aget(zh, UNIVERSAL_ID_PATH, 1, my_data_completion, strdup(UNIVERSAL_ID_PATH))) {
+        fprintf(stderr, "Failed to aget %s\n", UNIVERSAL_ID_PATH);
+    }
+
+    char* path = get_config_path(location, ID_CONFIG);
+    if (zoo_aget(zh, path, 1, my_data_completion, path)) {
+        fprintf(stderr, "Failed to aget %s\n", UNIVERSAL_ID_PATH);
     }
 }
 
@@ -88,6 +137,7 @@ int main(int argc, char* argv[])
 {
     char address[128];
     int flags = 0;
+    fprintf(stdout, "%ld\n", _POSIX_C_SOURCE);
     zoo_deterministic_conn_order(1); // enable deterministic order
     if (argc > 2) {
         snprintf(address, sizeof(address), "%s:%s", argv[1], argv[2]);
@@ -96,5 +146,14 @@ int main(int argc, char* argv[])
     }
 
     zh = zookeeper_init(address, watcher, 30000, &myid, NULL, flags);
+    if (zh) {
+        sigset_t signals;
+        get_all_config("sh");
+        sigfillset(&signals);
+        sigwait(&signals, NULL);
+        zookeeper_close(zh);
+    }
+
+    exit(EXIT_SUCCESS);
 }
 
