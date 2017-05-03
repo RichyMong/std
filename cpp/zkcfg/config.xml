@@ -1,0 +1,10 @@
+<app>
+    <config>
+        <server>
+            <address>127.0.0.1:2181</address>
+        </server>
+        <timeout>3000</timeout>
+        <location>hn</location>
+        <type>front</type>
+    </config>
+</app>

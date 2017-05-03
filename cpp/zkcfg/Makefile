@@ -1,0 +1,10 @@
+PROGS=$(patsubst %.cpp, %, $(wildcard *.cpp))
+
+all:$(PROGS)
+
+%:%.cpp
+	g++ -std=c++14 -O0 -g -o $@ $^ -lzookeeper_mt -DTRHEADED
+
+.PHONY:clean
+clean:
+	@rm -f $(PROGS)

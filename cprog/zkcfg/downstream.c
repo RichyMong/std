@@ -119,7 +119,8 @@ void my_stat_completion(int rc, const struct Stat *stat,
 static void
 get_all_config(const char* location)
 {
-    if (zoo_aexists(zh, "/mds/zp/marketinfo.xml", 1, my_stat_completion, strdup("/mds/zp/marketinfo.xml"))) {
+    const char* marketinfo = "/mds/zp/marketinfo.xml";
+    if (zoo_aexists(zh, marketinfo, 1, my_stat_completion, strdup(marketinfo))) {
         fprintf(stderr, "Failed to check exist: %s\n", UNIVERSAL_ID_PATH);
     }
 
