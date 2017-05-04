@@ -26,3 +26,4 @@ char* get_config_path(const char* location, const char* cfgfile)
 
     return strdup(path);
 }
+

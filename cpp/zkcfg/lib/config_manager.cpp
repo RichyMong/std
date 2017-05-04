@@ -1,7 +1,6 @@
 #include <boost/property_tree/xml_parser.hpp>
 #include <sstream>
 #include <iostream>
-#include <cstdio>
 #include <cstdarg>
 #include "config_manager.h"
 
@@ -120,7 +119,6 @@ void ConfigManager::check_path(const char* fmt, ...)
     } else {
         pending_path_.push_back(path);
     }
-
 }
 
 void ConfigManager::check_exists(const char* file)
@@ -179,12 +177,5 @@ void ConfigManager::handle_stat(int rc, const struct Stat *stat)
     }
 }
 
-}
-
-int main()
-{
-    zkcfg::ConfigManager cm("config.xml");
-    cm.start();
-    fgetc(stdin);
 }
 
