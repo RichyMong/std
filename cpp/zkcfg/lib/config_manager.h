@@ -2,6 +2,7 @@
 
 #include <string>
 #include <deque>
+#include <boost/thread/mutex.hpp>
 
 namespace zkcfg
 {
@@ -31,6 +32,7 @@ private:
     std::string location_;
     std::string stype_;
     std::deque<std::string> pending_path_;
+    boost::mutex lock_;
 };
 
 }

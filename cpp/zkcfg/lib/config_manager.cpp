@@ -1,4 +1,5 @@
 #include <boost/property_tree/xml_parser.hpp>
+#include <boost/thread/lock_guard.hpp>
 #include <sstream>
 #include <iostream>
 #include <cstdarg>
@@ -114,6 +115,10 @@ void ConfigManager::check_path(const char* fmt, ...)
     char path[256];
     vsprintf(path, fmt, args);
     va_end(args);
+
+    // Our callback may be called before zoo_aexists returns so we have to
+    // make sure the path is added to pending_path_.
+    boost::lock_guard<boost::mutex> guard(lock_);
     if (zoo_aexists(zhandle_, path, 1, global_stat_completion, this)) {
         LOG("failed for %s", path);
     } else {
@@ -123,17 +128,9 @@ void ConfigManager::check_path(const char* fmt, ...)
 
 void ConfigManager::check_exists(const char* file)
 {
-    char path[256];
-    sprintf(path, "/%s", file);
-    if (zoo_aexists(zhandle_, path, 1, global_stat_completion, this)) {
-        LOG("failed for %s", path);
-    } else {
-        pending_path_.push_back(path);
-    }
-
     check_path("/%s", file);
     check_path("/%s/%s", stype_.c_str(), file);
-    check_path("/%s/%s/%s", location_.c_str(), stype_.c_str(), file);
+    check_path("/%s/%s/%s", stype_.c_str(), location_.c_str(), file);
 }
 
 void ConfigManager::handle_zk_event(zhandle_t* zh, const char*path, int type, int state)
@@ -148,32 +145,45 @@ void ConfigManager::handle_zk_event(zhandle_t* zh, const char*path, int type, in
             zhandle_ = NULL;
         }
     } else if (type == ZOO_CREATED_EVENT || type == ZOO_CHANGED_EVENT) {
-        pending_path_.push_back(path);
-        zoo_aget(zh, path, 1, global_data_completion, this);
+        boost::lock_guard<boost::mutex> guard(lock_);
+        if (zoo_aget(zh, path, 1, global_data_completion, this) == ZOK) {
+            pending_path_.push_back(path);
+        }
     }
 }
 
 void ConfigManager::handle_data(int rc, const char *value, int value_len,
         const struct Stat *stat)
 {
+    boost::lock_guard<boost::mutex> guard(lock_);
     std::string path = pending_path_.front();
     pending_path_.pop_front();
     if (rc != ZOK) {
-        LOG("failed to get data of %s, error=%d", path.c_str(), rc);
+        LOG("failed to get data of %s, error=%s", path.c_str(), zerror(rc));
     } else {
-        LOG("path=%s, data=%s", path.c_str(), value);
+        char* data = new char[value_len+1];
+        memcpy(data, value, value_len);
+        data[value_len] = 0;
+        LOG("path=%s, data=%s", path.c_str(), data);
+        delete[] data;
     }
 }
 
 void ConfigManager::handle_stat(int rc, const struct Stat *stat)
 {
+    boost::unique_lock<boost::mutex> ulock(lock_);
     std::string path = pending_path_.front();
     pending_path_.pop_front();
+    ulock.unlock();
     if (rc == ZOK) {
-        pending_path_.push_back(path);
-        zoo_aget(zhandle_, path.c_str(), 1, global_data_completion, this);
+        int grc = zoo_aget(zhandle_, path.c_str(), 1, global_data_completion, this);
+        if (grc == ZOK) {
+            pending_path_.push_back(path);
+        } else {
+            LOG("path%s, error=%s", path.c_str(), zerror(grc));
+        }
     } else {
-        LOG("path=%s, rc=%d", path.c_str(), rc);
+        LOG("path=%s, rc=%s", path.c_str(), zerror(rc));
     }
 }
 
