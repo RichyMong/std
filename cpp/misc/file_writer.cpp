@@ -13,6 +13,12 @@
 using namespace std;
 using namespace std::chrono;
 
+struct FileHeader
+{
+    char type[16];
+    int item_size;
+};
+
 struct Item
 {
     char buffer[1024];
@@ -20,10 +26,9 @@ struct Item
 
 static const char* FILE_NAME = "file_writer_test";
 
-bool fetch_item(Item* item)
+bool fetch_item(Item* item, int n)
 {
-    item->buffer[0] = 'a';
-    item->buffer[1] = '\0';
+    sprintf(item->buffer, "item%d", n);
     return true;
 }
 
@@ -33,12 +38,16 @@ int main(int argc, char** argv)
     const size_t size = count * sizeof(Item);
 
     auto start_tp = steady_clock::now();
+    FileHeader fh;
+    sprintf(fh.type, "file-test");
+    fh.item_size = count;
     if (argc < 2) {
         vector<Item> items(8192);
         for (size_t i = 0; i < items.size(); i++) {
-            fetch_item(&items[i]);
+            fetch_item(&items[i], i);
         }
         ofstream ofs(FILE_NAME, ofstream::out | ofstream::trunc);
+        ofs.write(reinterpret_cast<char*>(&fh), sizeof(fh));
         ofs.write(reinterpret_cast<char*>(&*items.begin()), size);
     } else {
         int fd = open(FILE_NAME, O_RDWR | O_CREAT, 0644);
@@ -46,22 +55,21 @@ int main(int argc, char** argv)
             cerr << "Failed to open file: " << errno << endl;
             exit(1);
         }
-        ftruncate(fd, size);
-        Item* items = reinterpret_cast<Item*>(mmap(NULL,
-                                              size,
-                                              PROT_WRITE,
-                                              MAP_PRIVATE,
-                                              fd,
-                                              0));
-        if (items == MAP_FAILED) {
+        size_t mmap_size = size + sizeof(FileHeader);
+        ftruncate(fd, mmap_size);
+        void* addr = mmap(NULL, mmap_size, PROT_WRITE, MAP_SHARED, fd, 0);
+        if (addr == MAP_FAILED) {
             cerr << "mmap error: " << strerror(errno) << endl;
             exit(2);
         }
+        madvise(addr, mmap_size, MADV_SEQUENTIAL);
+        *reinterpret_cast<FileHeader*>(addr) = fh;
+        Item* items = reinterpret_cast<Item*>((char*) addr + sizeof(fh));
         for (size_t i = 0; i < count; i++) {
-            fetch_item(items + i);
+            fetch_item(items + i, i);
         }
 
-        munmap(items, size);
+        munmap(addr, mmap_size);
         close(fd);
     }
 
