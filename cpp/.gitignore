@@ -1,3 +1,9 @@
-**/*.o
-**/*.a
-**/*.so
+*
+!*/
+!.gitignore
+!**/*.cc
+!**/*.cpp
+!**/*.h
+!**/*.hpp
+!**/Makefile
+!**/CMakeLists.txt
