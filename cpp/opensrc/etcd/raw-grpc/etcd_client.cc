@@ -19,7 +19,8 @@
 #include <iostream>
 #include <memory>
 #include <string>
-
+#include <fstream>
+#include <sstream>
 #include <grpc++/grpc++.h>
 #include "protos/rpc.grpc.pb.h"
 
@@ -77,7 +78,7 @@ class AuthClient {
 class Client {
  public:
   Client(std::shared_ptr<Channel> channel, const std::string &token)
-      : kv_stub_(KV::NewStub(channel)), creds_(grpc::AccessTokenCredentials(token)) {}
+      : kv_stub_(KV::NewStub(channel)), token_(token) {}
 
   // Assembles the client's payload, sends it and presents the response back
   // from the server.
@@ -95,7 +96,7 @@ class Client {
     // Context for the client. It could be used to convey extra information to
     // the server and/or tweak certain RPC behaviors.
     ClientContext context;
-    context.set_credentials(creds_);
+    context.AddMetadata("token", token_);
 
     // The actual RPC.
     Status status = kv_stub_->Range(&context, request, &reply);
@@ -113,25 +114,40 @@ class Client {
 
  private:
   std::unique_ptr<KV::Stub> kv_stub_;
-  std::shared_ptr<grpc::CallCredentials> creds_;
+  std::string token_;
 };
 
 }
 
+std::string
+read (const std::string& filename)
+{
+	std::ifstream file (filename.c_str(), std::ios::in);
+
+	if (file.is_open()) {
+		std::stringstream ss;
+		ss << file.rdbuf ();
+
+		return ss.str ();
+	}
+
+	return std::string();
+}
+
 int main(int argc, char** argv) {
-  // Instantiate the client. It requires a channel, out of which the actual RPCs
-  // are created. This channel models a connection to an endpoint (in this case,
-  // localhost at port 50051). We indicate that the channel isn't authenticated
-  // (use of InsecureChannelCredentials()).
-  etcd::AuthClient auth_client(grpc::CreateChannel(
-      "202.104.236.84:2379", grpc::InsecureChannelCredentials()));
-  if (auth_client.auth("mds", "mengfanke")) {
-      auto token_cred = grpc::AccessTokenCredentials(auth_client.token());
-      auto cred = grpc::CompositeChannelCredentials(grpc::InsecureChannelCredentials(),
-              token_cred);
-      etcd::Client client(grpc::CreateChannel("202.104.236.84:2379",
-                  grpc::InsecureChannelCredentials()), auth_client.token());
-      std::cout << "Value received: " << client.get("/mine/front/sh/info.xml") << std::endl;
+  const std::string host = "localhost:2379";
+
+  auto cert = read("../client.crt");
+  auto key = read("../client.key");
+  auto root = read("../ca.crt");
+
+  grpc::SslCredentialsOptions opts = { root, key, cert };
+  auto ssl_cred = grpc::SslCredentials(opts);
+
+  etcd::AuthClient auth_client(grpc::CreateChannel(host, ssl_cred));
+  if (auth_client.auth("mds", "mds")) {
+      etcd::Client client(grpc::CreateChannel(host, ssl_cred), auth_client.token());
+      std::cout << "Value received: " << client.get("/waipan/mds/hz/marketinfo.xml") << std::endl;
   }
 
   return 0;
