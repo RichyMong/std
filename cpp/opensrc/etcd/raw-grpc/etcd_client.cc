@@ -32,11 +32,14 @@ using grpc::ClientContext;
 using grpc::Status;
 using grpc::CompletionQueue;
 using grpc::ClientAsyncResponseReader;
+using grpc::ClientAsyncReaderWriter;
 
 using etcdserverpb::KV;
 using etcdserverpb::Auth;
 using etcdserverpb::RangeRequest;
 using etcdserverpb::RangeResponse;
+using etcdserverpb::WatchRequest;
+using etcdserverpb::WatchResponse;
 
 namespace etcd {
 
@@ -128,9 +131,13 @@ class Client {
 private:
     std::string ProcessGetResponse(const Status &status, const RangeResponse &reply) {
         if (status.ok()) {
-            assert(reply.kvs_size() == 1);
-            std::cout << reply.kvs(0).value() << std::endl;
-            return reply.kvs(0).value();
+            if (reply.kvs().size() > 0) {
+                std::cout << reply.kvs(0).key() << ": " << reply.kvs(0).value() << std::endl;
+                return reply.kvs(0).value();
+            } else {
+                std::cout << "empty value" << std::endl;
+                return std::string();
+            }
         } else {
             std::cout << status.error_code() << ": " << status.error_message()
                       << std::endl;
@@ -163,6 +170,8 @@ private:
     };
 
     std::unique_ptr<KV::Stub> kv_stub_;
+    std::unique_ptr<KV::Stub> watch_stub_;
+    std::unique_ptr<ClientAsyncReaderWriter<WatchRequest, WatchResponse>> watch_stream_;
     std::string token_;
     CompletionQueue cq_;
     std::thread rpc_thread_;
@@ -188,59 +197,91 @@ read (const std::string& filepath)
 
 class Config {
 public:
-  Config(const std::string &path)
-  {
-      using boost::property_tree::ptree;
-      ptree pt;
-      read_xml(path, pt);
-      auth_on_ = pt.get<bool>("xml.auth_on");
-      if (auth_on_) {
-          ca_path_ = pt.get<std::string>("xml.ca_file");
-          cert_path_ = pt.get<std::string>("xml.cert_file");
-          key_path_ = pt.get<std::string>("xml.key_file");
-      }
-  }
+    Config(const std::string &path)
+        : ssl_on_ { false },
+          auth_on_ { false }
+    {
+        using boost::property_tree::ptree;
+        ptree pt;
+        read_xml(path, pt);
 
-  bool auth_on() const { return auth_on_; }
-  const std::string& ca_path() const { return ca_path_; }
-  const std::string& cert_path() const { return cert_path_; }
-  const std::string& key_path() const { return key_path_; }
+        host_ = pt.get<std::string>("xml.host");
+
+        auto ssl = pt.get_child_optional("xml.ssl");
+        if (ssl) {
+            auto ssl_pt = ssl.value();
+            auto on_pt = ssl_pt.get_optional<bool>("on");
+            if (on_pt && on_pt.value()) {
+                ssl_on_ = true;
+                ca_file_ = ssl_pt.get<std::string>("ca-file");
+                cert_file_ = ssl_pt.get<std::string>("cert-file");
+                key_file_ = ssl_pt.get<std::string>("key-file");
+            }
+        }
+
+        auto auth = pt.get_child_optional("xml.auth");
+        if (auth) {
+            auto auth_pt = auth.value();
+            auto enable_pt = auth_pt.get_optional<bool>("on");
+            if (enable_pt && enable_pt.value()) {
+                if (!ssl_on_) {
+                    std::cerr << "Warning: auth enabled but ssl disabled" << std::endl;
+                }
+                auth_on_ = enable_pt.value();
+                user_ = auth_pt.get<std::string>("user");
+                passwd_ = auth_pt.get<std::string>("passwd");
+            }
+        }
+    }
+
+    const std::string& host() const { return host_; }
+    const std::string& ca_file() const { return ca_file_; }
+    const std::string& cert_file() const { return cert_file_; }
+    const std::string& key_file() const { return key_file_; }
+    const std::string& user() const { return user_; }
+    const std::string& passwd() const { return passwd_; }
+    bool auth_on() const { return auth_on_; }
+    bool ssl_on() const { return ssl_on_; }
 
 private:
-  bool auth_on_;
-  std::string ca_path_;
-  std::string cert_path_;
-  std::string key_path_;
+    std::string host_;
+    std::string ca_file_;
+    std::string cert_file_;
+    std::string key_file_;
+    std::string user_;
+    std::string passwd_;
+    bool        ssl_on_;
+    bool        auth_on_;
 };
 
 int main(int argc, char** argv) {
-  const std::string host = "202.104.236.84:2379";
+    std::string cfg_file = argc > 1 ? argv[1] : "config.xml";
 
-  std::string cfg_path = argc > 1 ? argv[1] : "config.xml";
+    std::shared_ptr<grpc::ChannelCredentials> creds;
+    std::string token;
 
-  std::shared_ptr<grpc::ChannelCredentials> creds;
-  std::string token;
-
-  Config config(cfg_path);
-  if (config.auth_on()) {
-    auto root = read(config.ca_path());
-    auto key = read(config.key_path());
-    auto cert = read(config.cert_path());
-    grpc::SslCredentialsOptions opts = { root, key, cert };
-    creds = grpc::SslCredentials(opts);
-    etcd::AuthClient auth_client(grpc::CreateChannel(host, creds));
-    if (auth_client.auth("mds", "mds")) {
-      token = auth_client.token();
+    Config config(cfg_file);
+    if (config.auth_on()) {
+        auto root = read(config.ca_file());
+        auto key = read(config.key_file());
+        auto cert = read(config.cert_file());
+        grpc::SslCredentialsOptions opts = { root, key, cert };
+        creds = grpc::SslCredentials(opts);
+        etcd::AuthClient auth_client(grpc::CreateChannel(config.host(), creds));
+        if (auth_client.auth(config.user(), config.passwd())) {
+            token = auth_client.token();
+        }
+    } else {
+        creds = grpc::InsecureChannelCredentials();
     }
-  } else {
-    creds = grpc::InsecureChannelCredentials();
-  }
 
-  etcd::Client client(grpc::CreateChannel(host, creds), token);
-  std::cout << "make synchronous request\n";
-  std::cout << "make asynchronous request\n";
-  client.async_get("/waipan/mds/dev/marketcode.xml");
-  sleep(3);
+    etcd::Client client(grpc::CreateChannel(config.host(), creds), token);
+    std::cout << "make synchronous request\n";
+    std::cout << "make asynchronous request\n";
+    client.async_get("/waipan/mds/hz/marketinfo.xml");
+    client.async_get("/waipan/mds/hz/marketcode.xml");
+    sleep(3);
+    client.Stop();
 
   return 0;
 }
