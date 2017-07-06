@@ -32,14 +32,26 @@ using grpc::ClientContext;
 using grpc::Status;
 using grpc::CompletionQueue;
 using grpc::ClientAsyncResponseReader;
+using grpc::ClientReaderWriter;
 using grpc::ClientAsyncReaderWriter;
 
 using etcdserverpb::KV;
+using etcdserverpb::Watch;
 using etcdserverpb::Auth;
 using etcdserverpb::RangeRequest;
 using etcdserverpb::RangeResponse;
 using etcdserverpb::WatchRequest;
+using etcdserverpb::WatchCreateRequest;
 using etcdserverpb::WatchResponse;
+
+struct WatchParameter {
+    std::string key;
+    bool withPrefix;
+};
+
+using CallFunc = std::function<void(const std::string &error,
+                                    const std::string &key,
+                                    const std::string &value)>;
 
 namespace etcd {
 
@@ -90,14 +102,16 @@ class Client {
  public:
     Client(std::shared_ptr<Channel> channel, const std::string &token)
         : kv_stub_(KV::NewStub(channel)),
+          watch_stub_(Watch::NewStub(channel)),
           token_(token),
-          rpc_thread_(std::thread(&Client::AsyncCompleteRpc, this))
+          rpc_thread_(std::thread(&Client::AsyncCompleteRpc, this)),
+          watch_thread_(std::thread(&Client::AsyncCompleteWatch, this))
     {
     }
 
-    std::string get(const std::string& user) {
+    std::string get(const std::string& key) {
         RangeRequest request;
-        request.set_key(user);
+        request.set_key(key);
 
         ClientContext context;
         if (!token_.empty()) {
@@ -108,6 +122,64 @@ class Client {
 
         auto status = kv_stub_->Range(&context, request, &reply);
         return ProcessGetResponse(status, reply);
+    }
+
+    void GetAndWatch(const std::vector<std::string> &keys) {
+        unsigned int timeout = 5;
+
+        auto deadline = std::chrono::system_clock::now() + std::chrono::seconds(timeout);
+
+        for (const auto &key : keys) {
+            RangeRequest request;
+            request.set_key(key);
+            ClientContext context;
+            if (!token_.empty()) {
+                context.AddMetadata("token", token_);
+            }
+            context.set_deadline(deadline);
+
+            RangeResponse reply;
+            auto status = kv_stub_->Range(&context, request, &reply);
+            ProcessKeyResponse(key, status, reply);
+        }
+
+        ClientContext context;
+        std::shared_ptr<ClientReaderWriter<WatchRequest, WatchResponse> > stream(
+                watch_stub_->Watch(&context));
+
+        for (const std::string& key : keys) {
+            WatchRequest watch_req;
+
+            WatchCreateRequest watch_create_req;
+            watch_create_req.set_key(key);
+            watch_req.mutable_create_request()->CopyFrom(watch_create_req);
+            stream->Write(watch_req);
+        }
+        stream->WritesDone();
+
+        WatchResponse reply;
+        while (stream->Read(&reply)) {
+            auto index = reply.header().revision();
+            for(int cnt = 0; cnt < reply.events_size(); cnt++) {
+              auto event = reply.events(cnt);
+              if (mvccpb::Event::EventType::Event_EventType_PUT == event.type()) {
+                  if(event.kv().version() == 1) {
+                      std::cout << "create event" << std::endl;
+                  } else {
+                      std::cout << "put event" << std::endl;
+                  }
+              } else if(mvccpb::Event::EventType::Event_EventType_DELETE == event.type()) {
+                  std::cout << "delete event" << std::endl;
+              }
+
+              if (event.has_kv()) {
+                  const auto &kv = event.kv();
+                  call_func_(std::string(), kv.key(), kv.value());
+              }
+              break;
+            }
+        }
+        stream->Finish();
     }
 
     void async_get(const std::string& user) {
@@ -123,12 +195,54 @@ class Client {
         call->response_reader->Finish(&call->reply, &call->status, (void*)call);
     }
 
+    void AsyncWatch(const std::string &key)
+    {
+        if (!watch_stream_) {
+            watch_stream_ = watch_stub_->AsyncWatch(&watch_context_, &watch_cq_, (void*)"create");
+        }
+
+        WatchRequest watch_req;
+
+        WatchCreateRequest watch_create_req;
+        watch_create_req.set_key(key);
+
+        if (false && !key.empty()) {
+            std::string range_end(key);
+            int ascii = (int) range_end[range_end.length() - 1];
+            range_end.back() = ascii + 1;
+            watch_create_req.set_range_end(range_end);
+        }
+        watch_req.mutable_create_request()->CopyFrom(watch_create_req);
+        watch_stream_->Write(watch_req, (void*)"write");
+    }
+
+    void SetCallback(const CallFunc& func) {
+        call_func_ = func;
+    }
+
     void Stop() {
         cq_.Shutdown();
+        watch_cq_.Shutdown();
         rpc_thread_.join();
+        watch_thread_.join();
     }
 
 private:
+    void ProcessKeyResponse(const std::string &key,
+                            const Status &status,
+                            const RangeResponse &reply) {
+        if (status.ok()) {
+            for (const auto &kv : reply.kvs()) {
+                call_func_(std::string(), kv.key(), kv.value());
+            }
+            if (reply.kvs().empty()) {
+                call_func_(std::string(), key, std::string());
+            }
+        } else {
+            call_func_(status.error_message(), key, std::string());
+        }
+    }
+
     std::string ProcessGetResponse(const Status &status, const RangeResponse &reply) {
         if (status.ok()) {
             if (reply.kvs().size() > 0) {
@@ -161,6 +275,17 @@ private:
         }
     }
 
+    void AsyncCompleteWatch() {
+        void* got_tag;
+        bool ok = false;
+
+        // Block until the next result is available in the completion queue "cq".
+        while (watch_cq_.Next(&got_tag, &ok)) {
+            const char *str = (const char*) got_tag;
+            std::cout << str << std::endl;
+        }
+    }
+
 private:
     struct AsyncClientCall {
         RangeResponse reply;
@@ -170,11 +295,15 @@ private:
     };
 
     std::unique_ptr<KV::Stub> kv_stub_;
-    std::unique_ptr<KV::Stub> watch_stub_;
-    std::unique_ptr<ClientAsyncReaderWriter<WatchRequest, WatchResponse>> watch_stream_;
-    std::string token_;
+    std::string  token_;
     CompletionQueue cq_;
+    CompletionQueue watch_cq_;
+    ClientContext watch_context_;
     std::thread rpc_thread_;
+    std::unique_ptr<ClientAsyncReaderWriter<WatchRequest, WatchResponse>> watch_stream_;
+    std::thread watch_thread_;
+    std::unique_ptr<Watch::Stub> watch_stub_;
+    CallFunc call_func_;
 };
 
 }
@@ -254,6 +383,17 @@ private:
     bool        auth_on_;
 };
 
+void HandleKeyValue(const std::string &error,
+                    const std::string &key,
+                    const std::string &value)
+{
+    if (!error.empty()) {
+        std::cerr << "error: " << error << std::endl;
+    } else {
+        std::cout << key << ": " << value << std::endl;
+    }
+}
+
 int main(int argc, char** argv) {
     std::string cfg_file = argc > 1 ? argv[1] : "config.xml";
 
@@ -275,12 +415,11 @@ int main(int argc, char** argv) {
         creds = grpc::InsecureChannelCredentials();
     }
 
-    etcd::Client client(grpc::CreateChannel(config.host(), creds), token);
-    std::cout << "make synchronous request\n";
-    std::cout << "make asynchronous request\n";
-    client.async_get("/waipan/mds/hz/marketinfo.xml");
-    client.async_get("/waipan/mds/hz/marketcode.xml");
-    sleep(3);
+    auto channel = grpc::CreateChannel(config.host(), creds);
+    etcd::Client client(channel, token);
+    client.SetCallback(HandleKeyValue);
+    client.GetAndWatch(std::vector<std::string> { "/waipan/mds/hz/marketcode.xml", "/waipan/mds/hz/marketinfo.xml" });
+    pause();
     client.Stop();
 
   return 0;

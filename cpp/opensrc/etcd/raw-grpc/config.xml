@@ -2,12 +2,12 @@
     <host>localhost:2379</host>
     <ssl>
         <on>true</on>
-        <ca-file>/home/ouou/git/mine/std/deploy/etcd/certs/ca.crt</ca-file>
-        <cert-file>/home/ouou/git/mine/std/deploy/etcd/certs/client.crt</cert-file>
-        <key-file>/home/ouou/git/mine/std/deploy/etcd/certs/client.key</key-file>
+        <ca-file>/home/meng/git/mine/std/deploy/etcd/certs/ca.crt</ca-file>
+        <cert-file>/home/meng/git/mine/std/deploy/etcd/certs/client.crt</cert-file>
+        <key-file>/home/meng/git/mine/std/deploy/etcd/certs/client.key</key-file>
     </ssl>
     <auth>
-        <on>true</on>
+        <on>false</on>
         <user>mds</user>
         <passwd>mds</passwd>
     </auth>
