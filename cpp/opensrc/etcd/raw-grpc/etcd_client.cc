@@ -24,12 +24,14 @@
 #include <sstream>
 #include <grpc++/grpc++.h>
 #include <cstdlib>
+#include <time.h>
 #include <boost/property_tree/xml_parser.hpp>
 #include "protos/rpc.grpc.pb.h"
 
 using grpc::Channel;
 using grpc::ClientContext;
 using grpc::Status;
+using grpc::StatusCode;
 using grpc::CompletionQueue;
 using grpc::ClientAsyncResponseReader;
 using grpc::ClientReaderWriter;
@@ -127,20 +129,29 @@ class Client {
     void GetAndWatch(const std::vector<std::string> &keys) {
         unsigned int timeout = 5;
 
-        auto deadline = std::chrono::system_clock::now() + std::chrono::seconds(timeout);
-
         for (const auto &key : keys) {
-            RangeRequest request;
-            request.set_key(key);
-            ClientContext context;
-            if (!token_.empty()) {
-                context.AddMetadata("token", token_);
-            }
-            context.set_deadline(deadline);
+            while (true) {
+                auto deadline = std::chrono::system_clock::now() + std::chrono::seconds(timeout);
+                RangeRequest request;
+                request.set_key(key);
+                ClientContext context;
+                if (!token_.empty()) {
+                    context.AddMetadata("token", token_);
+                }
+                context.set_deadline(deadline);
 
-            RangeResponse reply;
-            auto status = kv_stub_->Range(&context, request, &reply);
-            ProcessKeyResponse(key, status, reply);
+                RangeResponse reply;
+                auto status = kv_stub_->Range(&context, request, &reply);
+                ProcessKeyResponse(key, status, reply);
+                if (status.ok()) {
+                    break;
+                }
+                std::cout << (int)status.error_code() << std::endl;
+                if (status.error_code() != StatusCode::UNAVAILABLE &&
+                    status.error_code() != StatusCode::DEADLINE_EXCEEDED) {
+                    return;
+                }
+            }
         }
 
         ClientContext context;
@@ -179,7 +190,9 @@ class Client {
               break;
             }
         }
+        std::cout << "read error\n";
         stream->Finish();
+        std::cout << "finish\n";
     }
 
     void async_get(const std::string& user) {
@@ -388,9 +401,9 @@ void HandleKeyValue(const std::string &error,
                     const std::string &value)
 {
     if (!error.empty()) {
-        std::cerr << "error: " << error << std::endl;
+        std::cerr << time(NULL) << __func__ << ":" << __LINE__ << "error: " << error << std::endl;
     } else {
-        std::cout << key << ": " << value << std::endl;
+        std::cout << time(NULL) << __func__ << ":" << __LINE__ << key  << ": " << value << std::endl;
     }
 }
 
@@ -416,10 +429,10 @@ int main(int argc, char** argv) {
     }
 
     auto channel = grpc::CreateChannel(config.host(), creds);
+
     etcd::Client client(channel, token);
     client.SetCallback(HandleKeyValue);
     client.GetAndWatch(std::vector<std::string> { "/waipan/mds/hz/marketcode.xml", "/waipan/mds/hz/marketinfo.xml" });
-    pause();
     client.Stop();
 
   return 0;
