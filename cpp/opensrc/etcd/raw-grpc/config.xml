@@ -1,5 +1,5 @@
 <xml>
-    <host>localhost:2379</host>
+    <host>ohmygod:2379</host>
     <ssl>
         <on>true</on>
         <ca-file>/home/meng/git/mine/std/deploy/etcd/certs/ca.crt</ca-file>
