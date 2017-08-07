@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<config>
+    <!--If sentinel is false, servers must be set. Otherwise, sentinels must be-->
+    <redis sentinel="0">
+        <endpoint ip="127.0.0.1" port="6379" />
+        <endpoint ip="127.0.0.1" port="6380" />
+    </redis>
+</config>
