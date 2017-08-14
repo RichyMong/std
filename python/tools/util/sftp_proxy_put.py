@@ -2,6 +2,17 @@ import sys
 import argparse
 import os.path as op
 import proxysftp
+from collections import Iterable
+
+def put_2_single_host(host, ns):
+    sftp = proxysftp.get_proxy_sftp(host)
+
+    if ns.remote:
+        for local_file in ns.local:
+            sftp.put_file(host, local_file, ns.remote)
+    else:
+        remote_dir = sftp.get_service_deploy_dir(ns.service, host)
+        sftp.put_file(host, ns.local[0], op.join(remote_dir, op.basename(ns.local[0])))
 
 
 if __name__ == '__main__':
@@ -18,12 +29,9 @@ if __name__ == '__main__':
 
     for x in ns.host:
         host = proxysftp.get_fqdn_host(x)
+        if isinstance(host, str):
+            put_2_single_host(host, ns)
+        elif isinstance(host, Iterable):
+            for h in host:
+                put_2_single_host(h, ns)
 
-        sftp = proxysftp.get_proxy_sftp(host)
-
-        if ns.remote:
-            for local_file in ns.local:
-                sftp.put_file(host, local_file, ns.remote)
-        else:
-            remote_dir = sftp.get_service_deploy_dir(ns.service, host)
-            sftp.put_file(host, ns.local[0], op.join(remote_dir, op.basename(ns.local[0])))
