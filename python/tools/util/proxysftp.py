@@ -41,10 +41,13 @@ class ProxySFTP(object):
                                       username=username,
                                       password=password,
                                       cnopts=cnopts)
-        self.proxy_user = proxy_user
-        self.user_home = op.join('home', proxy_user)
         self.last_byte = 0
         self.last_time = None
+        self.proxy_user = proxy_user
+        if proxy_user == 'root':
+            self.user_home = 'root/'
+        else:
+            self.user_home = op.join('home', proxy_user, '/')
 
     def handle_progress(self, nr_done, nr_needed):
         if self.last_time is not None:
