@@ -5,6 +5,7 @@
 #include <boost/core/null_deleter.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
+#include <boost/phoenix.hpp>
 #include <boost/log/common.hpp>
 #include <boost/log/expressions.hpp>
 #include <boost/log/attributes.hpp>
@@ -24,6 +25,47 @@ namespace keywords = boost::log::keywords;
 using boost::shared_ptr;
 
 enum { LOG_RECORDS_TO_WRITE = 10 };
+
+BOOST_LOG_ATTRIBUTE_KEYWORD(thread_id, "ThreadID", attrs::current_thread_id::value_type )
+
+attrs::current_thread_id::value_type::native_type get_native_thread_id(
+        logging::value_ref<attrs::current_thread_id::value_type,
+        tag::thread_id> const& tid)
+{
+    if (tid)
+        return tid->native_id();
+    return 0;
+}
+
+enum severity_level
+{
+    normal,
+    notification,
+    warning,
+    error,
+    critical
+};
+
+BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", severity_level)
+
+std::ostream& operator<< (std::ostream& strm, severity_level level)
+{
+    static const char* strings[] =
+    {
+        "D",
+        "N",
+        "W",
+        "E",
+        "C"
+    };
+
+    if (static_cast< std::size_t >(level) < sizeof(strings) / sizeof(*strings))
+        strm << strings[level];
+    else
+        strm << static_cast< int >(level);
+
+    return strm;
+}
 
 int main(int argc, char* argv[])
 {
@@ -53,7 +95,8 @@ int main(int argc, char* argv[])
         (
             expr::stream
                 << "[" << expr::format_date_time< boost::posix_time::ptime >("TimeStamp", "%H:%M:%S.%f") << "]"
-                << "[" << expr::attr< attrs::current_thread_id::value_type >("ThreadID") << "] "
+                << "[" << severity << "]"
+                << "[" << boost::phoenix::bind(&get_native_thread_id, thread_id.or_none()) << "] "
                 << expr::smessage
         );
 
@@ -65,9 +108,9 @@ int main(int argc, char* argv[])
         core->add_global_attribute("ThreadID", attrs::current_thread_id());
 
         // Do some logging
-        src::logger lg;
+        src::severity_logger< severity_level > lg;
         for (unsigned int i = 0; i < LOG_RECORDS_TO_WRITE; ++i) {
-            BOOST_LOG(lg) << "Some log record";
+            BOOST_LOG_SEV(lg, normal) << "Some log record";
         }
 
         return 0;
