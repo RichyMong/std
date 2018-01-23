@@ -5,26 +5,7 @@ import os.path as op
 from datetime import datetime
 
 SERVER_DESC = {
-    'zr'   : '114.80.234',
     'zp'   : '10.205.135',
-    'beta' : '10.205.135',
-    'mdsgray' : {
-                '156' : '112.124.114.156',
-                '8'   : '112.124.113.8',
-                '78'  : '112.124.113.78'
-             },
-    'gqsgray' : {
-                '136' : '112.124.113.136',
-                '133' : '112.124.113.133',
-                '146' : '112.124.109.146',
-                '251' : '121.40.106.251',
-                '77' : '121.199.73.77',
-                '46' : '121.199.37.46',
-                '55' : '120.26.202.55',
-                '11' : '120.26.106.11',
-                '14' : '121.40.69.14',
-                '16' : '120.26.64.16',
-             },
 }
 
 proxy_ftps = {}
@@ -47,7 +28,7 @@ class ProxySFTP(object):
         if proxy_user == 'root':
             self.user_home = 'root/'
         else:
-            self.user_home = op.join('home', proxy_user, '/')
+            self.user_home = op.join('home', proxy_user, '')
 
     def handle_progress(self, nr_done, nr_needed):
         if self.last_time is not None:
@@ -97,35 +78,15 @@ class ProxySFTP(object):
     def find_host_home(self, host):
         pattern = re.compile(r'(\w+) sftp[^ ]* \({}\)'.format(host))
 
-        for path in self.sftp.listdir():
+        paths = self.sftp.listdir()
+        for path in paths:
             m = re.search(pattern, path)
             if m is not None:
                 return op.join(path, self.proxy_user)
         raise RuntimeError('cannot find host {}'.format(host))
 
     def get_service_deploy_dir(self, service, host):
-        sftp_home = self.find_host_home(host)
-        if service == 'mds':
-            if self.proxy_user == 'root':
-                bin_dir_map = { 'multidatasvr' : [ 'home/liuf8/', 'root', 'eastmoney/service/' ] }
-            else:
-                return 'home/baoleiji/mds_upgrade/'
-        elif service == 'gqs':
-            if self.proxy_user == 'root':
-                bin_dir_map = { 'globalquote' : [ 'root', 'eastmoney/services/' ] }
-            else:
-                return 'home/baoleiji/gqs_upgrade/'
-        else:
-            raise RuntimeError('unknown service {}'.format(service))
-
-        for bin_dir, possible_homes in bin_dir_map.items():
-            for possible_home in possible_homes:
-                depoly_dir = op.join(possible_home, bin_dir)
-                if self.sftp.exists(op.join(sftp_home, depoly_dir)):
-                    return depoly_dir
-        else:
-            raise RuntimeError('no deployment directory found')
-
+        return 'home/baoleiji/{}_upgrade/'.format(service)
 
 def get_loc_host(loc, brief=None):
     v = SERVER_DESC[loc]
@@ -146,7 +107,7 @@ def get_fqdn_host(host):
             raise ValueError('server location {} not found'.format(desc))
         return get_loc_host(desc, brief)
     else:
-        return get_loc_host(host)
+        return host
 
 def get_proxy_info(proxy_name):
     rds = redis.StrictRedis(host='localhost', port=6379, db=0)
@@ -165,4 +126,3 @@ def get_proxy_sftp(host):
         proxy_ftps[proxy_name] = pt
 
     return proxy_ftps[proxy_name]
-
