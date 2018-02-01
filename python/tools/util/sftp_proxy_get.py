@@ -3,6 +3,7 @@ import argparse
 import os
 import os.path as op
 import proxysftp
+import redis
 
 
 if __name__ == '__main__':
